@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0c1424" />
+  <title>Claw Craze 🧸</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Top HUD -->
+    <header class="hud">
+      <div class="hud-stats">
+        <div class="stat"><span class="ico">🪙</span><b id="hud-coins">3</b></div>
+        <div class="stat"><span class="ico">⭐</span><b id="hud-points">0</b></div>
+        <div class="stat"><span class="ico">🧸</span><b id="hud-prizes">0</b></div>
+      </div>
+      <div class="hud-btns">
+        <button id="btn-sound" class="icon-btn" title="Sound">🔊</button>
+        <button id="btn-menu" class="icon-btn" title="Menu">☰</button>
+      </div>
+    </header>
+
+    <!-- Play area -->
+    <div id="stage">
+      <canvas id="game"></canvas>
+
+      <div id="timerbar" class="hidden"><div id="timerfill"></div></div>
+      <div id="toast" class="hidden"></div>
+      <div id="result-banner" class="banner hidden"></div>
+
+      <!-- Title -->
+      <div id="overlay-title" class="overlay">
+        <div class="card">
+          <h1>CLAW<span>CRAZE</span></h1>
+          <p>Line up the claw, drop it, and snag a plushie! Win rate is low and the
+             claw is clumsy — that's the fun. 🧸</p>
+          <ul class="how">
+            <li>◀ ▶ move • ▲ ▼ depth • <b>DROP</b> to grab</li>
+            <li>20s per turn — or it drops on its own</li>
+            <li>~5% chance the claw fumbles it on the way 🫣</li>
+          </ul>
+          <button id="btn-play" class="primary">PLAY</button>
+        </div>
+      </div>
+
+      <!-- Game over / out of coins -->
+      <div id="overlay-gameover" class="overlay hidden">
+        <div class="card">
+          <h2>Out of coins!</h2>
+          <p>Grab some free coins to keep playing.</p>
+          <button id="btn-freecoin" class="primary">🎁 Get 3 Free Coins</button>
+          <p class="fine">In a real release this is where a rewarded ad or coin
+             pack would go.</p>
+        </div>
+      </div>
+
+      <!-- Menu: themes + collection -->
+      <div id="overlay-menu" class="overlay hidden">
+        <div class="card wide">
+          <div class="menu-head">
+            <h2>Collection &amp; Themes</h2>
+            <button id="btn-menu-close" class="icon-btn">✕</button>
+          </div>
+
+          <h3>Machine Themes</h3>
+          <div id="theme-list" class="theme-list"></div>
+
+          <h3>Your Plushies</h3>
+          <div id="collection" class="collection"></div>
+
+          <div class="menu-foot">
+            <button id="menu-sound" class="ghost">🔊 Sound: On</button>
+            <button id="menu-reset" class="ghost danger">Reset progress</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div id="controls">
+      <div id="dpad" class="dpad">
+        <button id="btn-up" class="dbtn up" aria-label="Back">▲</button>
+        <button id="btn-left" class="dbtn left" aria-label="Left">◀</button>
+        <button id="btn-down" class="dbtn down" aria-label="Forward">▼</button>
+        <button id="btn-right" class="dbtn right" aria-label="Right">▶</button>
+        <span class="dpad-center">MOVE</span>
+      </div>
+      <button id="btn-action" class="action" data-role="insert">INSERT COIN</button>
+    </div>
+  </div>
+
+  <script src="audio.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
