@@ -6,10 +6,12 @@ and desktop**. No build step and no install — just open the HTML.
 ## Games
 
 ### 🧸 Claw Craze — `games/claw-machine/`
-A **real 3D** claw machine (WebGL) where you line up a clumsy claw, drop it, and
-try to snag a plushie out of a physics-driven heap. Faithful to the real thing:
-low win rate, a 20-second timer, and the occasional fumble on the way to the
-prize chute.
+A **real 3D** claw machine (WebGL) with neon-bloom glow, environment-lit
+reflections, and a full arcade cabinet (marquee, control panel, coin door, glossy
+floor). You line up a clumsy claw over a **physics-driven heap** of plushies and
+try to snag one. Grabbing is **skill-based**: the better you center the claw
+(watch the aim ring go green), the higher your odds — and rare prizes are
+slippery. Plus a 20-second timer and the occasional fumble on the way to the chute.
 
 **How to play**
 - You start with **3 coins**; insert one to begin a turn.
@@ -25,9 +27,10 @@ prize chute.
 
 **Tuning** — gameplay knobs live at the top of
 [`games/claw-machine/game.js`](games/claw-machine/game.js): `AIM_TIME`,
-`GRAB_CHANCE`, `CHAOS_DROP_CHANCE`, prize point values/weights, and the unlock
-thresholds in `THEMES`. Scene/physics knobs (cabinet size, grab reach `GRASP`,
-heap size `PILE_TARGET`) live at the top of
+`GRAB_MIN`/`GRAB_MAX`/`AIM_SHARPNESS` (the skill curve), `GRIP_BY_RARITY` (how
+slippery rare prizes are), `CHAOS_DROP_CHANCE`, prize values/weights, and the
+unlock thresholds in `THEMES`. Scene/physics/render knobs (cabinet size, grab
+reach `GRASP`, heap size `PILE_TARGET`, and the `BLOOM` settings) live in
 [`scene3d.js`](games/claw-machine/scene3d.js).
 
 ## Run it
@@ -57,10 +60,12 @@ games/
 ## Roadmap → "real app-store game"
 Built so it can keep growing:
 
-- **Graphics** — real 3D now (Three.js). Plushies/cabinet are built from
-  primitives + `MeshStandardMaterial`; swap in modeled/sculpted assets (glTF) for
-  richer art without touching the state machine. Neon **bloom** post-processing is
-  a natural next step (needs the ES-module Three build).
+- **Graphics** — real 3D (Three.js) with a hand-written post pipeline: HDR scene
+  buffer → bright-pass → separable Gaussian bloom → exposure tone-map composite,
+  plus procedural PMREM environment lighting and a glossy reflective floor. The
+  next jump is **modeled glTF plushies/props** — they drop into `makePlushMesh`
+  (scene3d.js) without touching the state machine. (Fetching CC0 models needs a
+  network the build env may block; supply `.glb` files in the repo to wire them in.)
 - **Physics** — cannon.js drives the plush heap and claw collisions. Tune mass,
   friction, and `GRASP`/`GRAB_CHANCE` for feel.
 - **Audio** — `audio.js` generates music + SFX procedurally. Replace with licensed

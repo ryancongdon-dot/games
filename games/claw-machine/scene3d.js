@@ -36,7 +36,8 @@ const Scene = (() => {
   let clawBody;
   let keyLight, accentLight;
   let reticle, raycaster, aimMode = false;
-  let frameMats = [], neonMats = [], floorMat, glassMat;
+  let frameMats = [], neonMats = [], floorMat, glassMat, floorGlow;
+  const BASE_TOP = -0.12, BASE_H = 1.4;
   let plushTypes = [];      // injected from game.js (PLUSH_TYPES)
   let palette = null;
   const matCache = {};      // per-type materials
@@ -45,21 +46,26 @@ const Scene = (() => {
   const clawState = { x: 0.05, z: 0.06, drop: 0, prong: 0 };
 
   // camera orbit
-  const orbit = { theta: 0, phi: 1.0, radius: 6.4, tx: 0, ty: 1.05, tz: 0 };
+  const orbit = { theta: 0, phi: 1.02, radius: 6.8, tx: 0, ty: 0.62, tz: 0 };
   let dragging = false, lastX = 0, lastY = 0;
 
   const PLUSH_GEO = {};
+  let glintMat, cheekMat;
 
   function buildGeometries() {
-    PLUSH_GEO.body = new THREE.SphereGeometry(PLUSH_R, 18, 14);
-    PLUSH_GEO.belly = new THREE.SphereGeometry(PLUSH_R * 0.66, 14, 12);
-    PLUSH_GEO.earRound = new THREE.SphereGeometry(PLUSH_R * 0.42, 12, 10);
-    PLUSH_GEO.earLong = new THREE.CapsuleGeometry(PLUSH_R * 0.22, PLUSH_R * 0.85, 4, 8);
-    PLUSH_GEO.earPoint = new THREE.ConeGeometry(PLUSH_R * 0.42, PLUSH_R * 0.8, 12);
-    PLUSH_GEO.eye = new THREE.SphereGeometry(PLUSH_R * 0.13, 8, 6);
-    PLUSH_GEO.nose = new THREE.SphereGeometry(PLUSH_R * 0.14, 8, 6);
-    PLUSH_GEO.horn = new THREE.ConeGeometry(PLUSH_R * 0.24, PLUSH_R * 0.7, 10);
-    PLUSH_GEO.foot = new THREE.SphereGeometry(PLUSH_R * 0.3, 8, 6);
+    PLUSH_GEO.body = new THREE.SphereGeometry(PLUSH_R, 22, 16);
+    PLUSH_GEO.belly = new THREE.SphereGeometry(PLUSH_R * 0.66, 16, 12);
+    PLUSH_GEO.earRound = new THREE.SphereGeometry(PLUSH_R * 0.42, 14, 10);
+    PLUSH_GEO.earLong = new THREE.CapsuleGeometry(PLUSH_R * 0.22, PLUSH_R * 0.85, 5, 10);
+    PLUSH_GEO.earPoint = new THREE.ConeGeometry(PLUSH_R * 0.42, PLUSH_R * 0.8, 14);
+    PLUSH_GEO.eye = new THREE.SphereGeometry(PLUSH_R * 0.15, 12, 10);
+    PLUSH_GEO.glint = new THREE.SphereGeometry(PLUSH_R * 0.05, 8, 6);
+    PLUSH_GEO.cheek = new THREE.SphereGeometry(PLUSH_R * 0.12, 10, 8);
+    PLUSH_GEO.nose = new THREE.SphereGeometry(PLUSH_R * 0.14, 10, 8);
+    PLUSH_GEO.horn = new THREE.ConeGeometry(PLUSH_R * 0.24, PLUSH_R * 0.7, 12);
+    PLUSH_GEO.foot = new THREE.SphereGeometry(PLUSH_R * 0.3, 10, 8);
+    glintMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.5, roughness: 0.3 });
+    cheekMat = new THREE.MeshStandardMaterial({ color: 0xff7da0, roughness: 0.7, transparent: true, opacity: 0.55 });
   }
 
   function typeMats(t) {
@@ -111,14 +117,21 @@ const Scene = (() => {
       }
     }
 
-    // eyes + nose (front = +Z)
+    // eyes (+ catch-light) and rosy cheeks (front = +Z)
     for (const sx of [-1, 1]) {
       const eye = new THREE.Mesh(PLUSH_GEO.eye, M.dark);
-      eye.position.set(sx * PLUSH_R * 0.34, PLUSH_R * 0.18, PLUSH_R * 0.9);
+      eye.position.set(sx * PLUSH_R * 0.34, PLUSH_R * 0.18, PLUSH_R * 0.88);
       g.add(eye);
+      const glint = new THREE.Mesh(PLUSH_GEO.glint, glintMat);
+      glint.position.set(sx * PLUSH_R * 0.30, PLUSH_R * 0.24, PLUSH_R * 0.99);
+      g.add(glint);
+      const cheek = new THREE.Mesh(PLUSH_GEO.cheek, cheekMat);
+      cheek.position.set(sx * PLUSH_R * 0.55, PLUSH_R * 0.0, PLUSH_R * 0.74);
+      cheek.scale.set(1, 0.7, 0.5);
+      g.add(cheek);
     }
     const nose = new THREE.Mesh(PLUSH_GEO.nose, M.accent);
-    nose.position.set(0, 0, PLUSH_R * 1.0);
+    nose.position.set(0, PLUSH_R * 0.02, PLUSH_R * 1.0);
     g.add(nose);
 
     if (t.horn) {
@@ -206,6 +219,18 @@ const Scene = (() => {
     return tex;
   }
 
+  function makeRadialGlow() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const x = c.getContext('2d');
+    const g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(0.4, 'rgba(255,255,255,0.35)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+
   function neonEdge(ax, ay, az, bx, by, bz, colorMat) {
     const a = new THREE.Vector3(ax, ay, az), b = new THREE.Vector3(bx, by, bz);
     const len = a.distanceTo(b);
@@ -247,8 +272,10 @@ const Scene = (() => {
       post.castShadow = true; scene.add(post);
     }
 
-    // neon edges (bright, glow-like) — recolored by theme
-    const neonMat = new THREE.MeshBasicMaterial({ color: 0xff5d8f });
+    // neon edges — emissive so the bloom pass makes them glow; recolored by theme
+    const neonMat = new THREE.MeshStandardMaterial({
+      color: 0x000000, emissive: 0xff5d8f, emissiveIntensity: 2.6, roughness: 1, metalness: 0,
+    });
     neonMats = [neonMat];
     const topY = RAIL_TOP + 0.42;
     // top rectangle
@@ -291,6 +318,71 @@ const Scene = (() => {
 
     buildChute();
     buildClaw();
+    buildBase();
+  }
+
+  // Lower console (pedestal) with control panel, joystick, buttons + coin door,
+  // sitting on a glossy reflective arcade floor with a neon puddle of light.
+  function buildBase() {
+    const bw = HX * 2 + 0.18, bd = HZ * 2 + 0.18;
+    const baseY = BASE_TOP - BASE_H / 2;
+    const groundY = BASE_TOP - BASE_H;
+    const frontZ = HZ + 0.09;
+
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x2a3a5c, roughness: 0.42, metalness: 0.35 });
+    frameMats.push(baseMat); // recolored with the cabinet frame per theme
+    const base = new THREE.Mesh(new THREE.BoxGeometry(bw, BASE_H, bd), baseMat);
+    base.position.set(0, baseY, 0);
+    base.castShadow = true; base.receiveShadow = true;
+    scene.add(base);
+
+    // angled control panel
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x161f33, roughness: 0.5, metalness: 0.3 });
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.92, 0.09, 0.46), panelMat);
+    panel.position.set(0, BASE_TOP - 0.04, frontZ + 0.04);
+    panel.rotation.x = -0.55;
+    panel.castShadow = true; scene.add(panel);
+
+    // joystick
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0x20262f, roughness: 0.6, metalness: 0.2 });
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.18, 12), stickMat);
+    stick.position.set(-0.34, BASE_TOP + 0.07, frontZ + 0.12);
+    stick.rotation.x = -0.55; scene.add(stick);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.055, 18, 14),
+      new THREE.MeshStandardMaterial({ color: 0xe23a55, roughness: 0.3, metalness: 0.1 }));
+    knob.position.set(-0.34, BASE_TOP + 0.16, frontZ + 0.06); scene.add(knob);
+
+    // two glowing buttons
+    const mkBtn = (x, color) => {
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 18),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a0a, emissive: color, emissiveIntensity: 1.8, roughness: 0.4 }));
+      b.position.set(x, BASE_TOP + 0.06, frontZ + 0.08);
+      b.rotation.x = -0.55 + Math.PI / 2; scene.add(b);
+    };
+    mkBtn(0.18, 0x39ff9a); mkBtn(0.36, 0x39b6ff);
+
+    // coin door on the base front
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.5, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0x0c1120, roughness: 0.55, metalness: 0.45 }));
+    door.position.set(0, BASE_TOP - 0.62, frontZ + 0.02); scene.add(door);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.025, 0.03),
+      new THREE.MeshStandardMaterial({ color: 0xf2c044, emissive: 0x3a2a00, roughness: 0.4, metalness: 0.6 }));
+    slot.position.set(0, BASE_TOP - 0.46, frontZ + 0.05); scene.add(slot);
+
+    // glossy arcade floor (reflects the procedural environment)
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(46, 46),
+      new THREE.MeshStandardMaterial({ color: 0x090d18, roughness: 0.22, metalness: 0.55, envMapIntensity: 1.1 }));
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = groundY;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // neon puddle under the cabinet (additive, recolored per theme)
+    floorGlow = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2),
+      new THREE.MeshBasicMaterial({ map: makeRadialGlow(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.5 }));
+    floorGlow.rotation.x = -Math.PI / 2;
+    floorGlow.position.y = groundY + 0.01;
+    scene.add(floorGlow);
   }
 
   function buildChute() {
@@ -488,6 +580,141 @@ const Scene = (() => {
   }
 
   // ---------------------------------------------------------------------------
+  // Environment lighting (procedural PMREM "studio")
+  // ---------------------------------------------------------------------------
+  function initEnvironment() {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envScene = new THREE.Scene();
+    envScene.background = new THREE.Color(0x161c2a);
+    const box = new THREE.BoxGeometry(1, 1, 1);
+    const panel = (color, x, y, z, sx, sy, sz) => {
+      const m = new THREE.Mesh(box, new THREE.MeshBasicMaterial({ color }));
+      m.position.set(x, y, z); m.scale.set(sx, sy, sz); envScene.add(m);
+    };
+    panel(0xffffff, 0, 6, 0, 8, 0.3, 8);      // soft top light
+    panel(0x6f88ff, -5, 1.5, 2, 0.3, 5, 6);   // cool rim (left)
+    panel(0xff77c2, 5, 1.5, -2, 0.3, 5, 6);   // warm/neon rim (right)
+    panel(0x3a4566, 0, 0, -6, 8, 6, 0.3); // back fill
+    const envRT = pmrem.fromScene(envScene, 0.04);
+    scene.environment = envRT.texture;
+    pmrem.dispose();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Post-processing: HDR scene buffer -> bloom -> ACES tone-map composite
+  // ---------------------------------------------------------------------------
+  let sceneRT, bloomA, bloomB, postType;
+  let fsScene, fsCam, fsQuad;
+  let brightMat, blurMat, compositeMat;
+  const BLOOM = { threshold: 0.85, knee: 0.2, strength: 0.7, iterations: 3 };
+
+  const FS_VERT = `
+    varying vec2 vUv;
+    void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+
+  function initPost() {
+    postType = (renderer.capabilities.isWebGL2 ||
+      renderer.extensions.has('EXT_color_buffer_half_float'))
+      ? THREE.HalfFloatType : THREE.UnsignedByteType;
+
+    fsScene = new THREE.Scene();
+    fsCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    fsQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), null);
+    fsQuad.frustumCulled = false;
+    fsScene.add(fsQuad);
+
+    brightMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, threshold: { value: BLOOM.threshold }, knee: { value: BLOOM.knee } },
+      vertexShader: FS_VERT,
+      fragmentShader: `
+        uniform sampler2D tDiffuse; uniform float threshold; uniform float knee;
+        varying vec2 vUv;
+        void main(){
+          vec3 c = texture2D(tDiffuse, vUv).rgb;
+          float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+          float k = smoothstep(threshold, threshold + knee, l);
+          gl_FragColor = vec4(c * k, 1.0);
+        }`,
+    });
+
+    blurMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, direction: { value: new THREE.Vector2(1, 0) }, texel: { value: new THREE.Vector2() } },
+      vertexShader: FS_VERT,
+      fragmentShader: `
+        uniform sampler2D tDiffuse; uniform vec2 direction; uniform vec2 texel;
+        varying vec2 vUv;
+        void main(){
+          vec2 o1 = texel * direction * 1.3846153846;
+          vec2 o2 = texel * direction * 3.2307692308;
+          vec3 col = texture2D(tDiffuse, vUv).rgb * 0.2270270270;
+          col += texture2D(tDiffuse, vUv + o1).rgb * 0.3162162162;
+          col += texture2D(tDiffuse, vUv - o1).rgb * 0.3162162162;
+          col += texture2D(tDiffuse, vUv + o2).rgb * 0.0702702703;
+          col += texture2D(tDiffuse, vUv - o2).rgb * 0.0702702703;
+          gl_FragColor = vec4(col, 1.0);
+        }`,
+    });
+
+    compositeMat = new THREE.ShaderMaterial({
+      uniforms: { tScene: { value: null }, tBloom: { value: null }, strength: { value: BLOOM.strength }, exposure: { value: 1.2 } },
+      vertexShader: FS_VERT,
+      fragmentShader: `
+        uniform sampler2D tScene; uniform sampler2D tBloom;
+        uniform float strength; uniform float exposure;
+        varying vec2 vUv;
+        void main(){
+          // scene is already display-space; add bloom then roll off highlights
+          // (exposure tone-map) without re-applying gamma.
+          vec3 col = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * strength;
+          col = vec3(1.0) - exp(-col * exposure);
+          gl_FragColor = vec4(col, 1.0);
+        }`,
+    });
+  }
+
+  function resizePost(w, h) {
+    if (!fsScene) return;
+    const opt = { type: postType, depthBuffer: true, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter };
+    const hw = Math.max(1, Math.floor(w / 2)), hh = Math.max(1, Math.floor(h / 2));
+    if (sceneRT) { sceneRT.dispose(); bloomA.dispose(); bloomB.dispose(); }
+    sceneRT = new THREE.WebGLRenderTarget(w, h, opt);
+    bloomA = new THREE.WebGLRenderTarget(hw, hh, { type: postType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    bloomB = new THREE.WebGLRenderTarget(hw, hh, { type: postType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+  }
+
+  function pass(mat, target) {
+    fsQuad.material = mat;
+    renderer.setRenderTarget(target || null);
+    renderer.render(fsScene, fsCam);
+  }
+
+  function renderPost() {
+    if (!sceneRT) { renderer.render(scene, camera); return; }
+    // 1) scene -> HDR buffer
+    renderer.setRenderTarget(sceneRT);
+    renderer.clear();
+    renderer.render(scene, camera);
+    // 2) bright pass -> half-res
+    brightMat.uniforms.tDiffuse.value = sceneRT.texture;
+    pass(brightMat, bloomA);
+    // 3) separable gaussian blur (ping-pong)
+    const texel = new THREE.Vector2(1 / bloomA.width, 1 / bloomA.height);
+    for (let i = 0; i < BLOOM.iterations; i++) {
+      blurMat.uniforms.tDiffuse.value = bloomA.texture;
+      blurMat.uniforms.texel.value = texel;
+      blurMat.uniforms.direction.value.set(1, 0);
+      pass(blurMat, bloomB);
+      blurMat.uniforms.tDiffuse.value = bloomB.texture;
+      blurMat.uniforms.direction.value.set(0, 1);
+      pass(blurMat, bloomA);
+    }
+    // 4) composite + tone-map to screen
+    compositeMat.uniforms.tScene.value = sceneRT.texture;
+    compositeMat.uniforms.tBloom.value = bloomA.texture;
+    pass(compositeMat, null);
+  }
+
+  // ---------------------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------------------
   function init(canvasEl, types, pal) {
@@ -495,28 +722,38 @@ const Scene = (() => {
     plushTypes = types;
     palette = pal;
 
+    // This three build is legacy/gamma-space; keep color management off so the
+    // composite pass can tone-map in display space without double-gamma.
+    if (THREE.ColorManagement) THREE.ColorManagement.enabled = false;
+
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    if ('outputEncoding' in renderer) renderer.outputEncoding = THREE.sRGBEncoding;
+    // The scene renders linear into an HDR buffer; tone-mapping + sRGB happen in
+    // the composite post pass, so keep the renderer itself neutral.
+    renderer.toneMapping = THREE.NoToneMapping;
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0c1424);
-    scene.fog = new THREE.Fog(0x0c1424, 6, 11);
+    scene.fog = new THREE.Fog(0x0c1424, 11, 26);
 
     camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
 
-    // lights
-    scene.add(new THREE.AmbientLight(0x556080, 0.85));
-    keyLight = new THREE.DirectionalLight(0xffffff, 1.05);
+    // image-based lighting from a small procedural studio (PMREM) gives the
+    // metal/glass realistic reflections; real lights stay subtle on top.
+    initEnvironment();
+    scene.add(new THREE.AmbientLight(0x46506a, 0.35));
+    keyLight = new THREE.DirectionalLight(0xfff2e6, 1.45);
     keyLight.position.set(2.4, 5, 3.4);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.radius = 4;
+    keyLight.shadow.bias = -0.0008;
     const sc = keyLight.shadow.camera;
-    sc.left = -2.4; sc.right = 2.4; sc.top = 3; sc.bottom = -1; sc.near = 1; sc.far = 12;
+    sc.left = -2.6; sc.right = 2.6; sc.top = 3.2; sc.bottom = -1.6; sc.near = 1; sc.far = 13;
     scene.add(keyLight);
-    accentLight = new THREE.PointLight(0xff5d8f, 0.9, 8, 2);
+    accentLight = new THREE.PointLight(0xff5d8f, 1.1, 9, 2);
     accentLight.position.set(0, RAIL_TOP - 0.2, 0.1);
     scene.add(accentLight);
 
@@ -533,6 +770,7 @@ const Scene = (() => {
     buildCabinet();
     buildReticle();
     if (pal) applyTheme(pal);
+    initPost();
     resize();
 
     // camera drag-to-orbit (canvas only; buttons are separate DOM)
@@ -630,8 +868,9 @@ const Scene = (() => {
     scene.background = bg;
     scene.fog.color = bg;
     const accent = new THREE.Color(pal.accent);
-    for (const m of neonMats) m.color.set(accent);
+    for (const m of neonMats) (m.emissive || m.color).set(accent);
     accentLight.color.set(accent);
+    if (floorGlow) floorGlow.material.color.set(accent);
     for (const m of frameMats) m.color.set(new THREE.Color(pal.frame));
     if (floorMat) floorMat.color.set(new THREE.Color(pal.floor));
   }
@@ -646,10 +885,12 @@ const Scene = (() => {
     camera.aspect = aspect;
     // Tall (portrait) screens need a wider fov + a bit more distance so the
     // whole cabinet (marquee → claw → heap) stays framed.
-    if (aspect < 0.7) { camera.fov = 56; orbit.radius = 6.8; }
-    else if (aspect < 1.1) { camera.fov = 50; orbit.radius = 6.2; }
-    else { camera.fov = 42; orbit.radius = 5.6; }
+    if (aspect < 0.7) { camera.fov = 58; orbit.radius = 6.9; }
+    else if (aspect < 1.1) { camera.fov = 52; orbit.radius = 6.4; }
+    else { camera.fov = 45; orbit.radius = 5.9; }
     camera.updateProjectionMatrix();
+    const buf = renderer.getDrawingBufferSize(new THREE.Vector2());
+    resizePost(buf.x, buf.y);
   }
 
   function update(dt) {
@@ -659,7 +900,7 @@ const Scene = (() => {
     updateCollecting(dt);
     updateReticle();
     updateCamera();
-    renderer.render(scene, camera);
+    renderPost();
   }
 
   return {
