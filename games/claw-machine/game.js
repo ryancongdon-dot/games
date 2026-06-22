@@ -6,7 +6,10 @@
   // Tunables (grouped for easy balancing)
   // ---------------------------------------------------------------------------
   const AIM_TIME = 20;            // seconds to aim before auto-drop
-  const GRAB_CHANCE = 0.40;       // chance the claw holds a well-aimed prize
+  // Location-based grab: chance scales with how centered the claw is over a plush.
+  const GRAB_MIN = 0.05;          // grab chance at the very edge of reach
+  const GRAB_MAX = 0.85;          // grab chance dead-centered on a common prize
+  const AIM_SHARPNESS = 1.8;      // higher = must be more precise (faster falloff)
   const CHAOS_DROP_CHANCE = 0.05; // chance to drop the prize mid-carry
   const MOVE_X = 0.46;            // claw horizontal speed (world/sec)
   const MOVE_Z = 0.52;            // claw depth speed (world/sec)
@@ -26,6 +29,8 @@
   ];
   const PLUSH_BY_ID = Object.fromEntries(PLUSH_TYPES.map(p => [p.id, p]));
   const RARITY_COLOR = { common: '#9fb2c9', uncommon: '#5ec8e0', rare: '#c08bff', legendary: '#ffcc4d' };
+  // Bigger/rarer prizes are harder for the claw to hold on to (like real machines).
+  const GRIP_BY_RARITY = { common: 1.0, uncommon: 0.9, rare: 0.65, legendary: 0.45 };
 
   // ---------------------------------------------------------------------------
   // Unlockable themes (recolor cabinet + page) gated by total points
@@ -85,6 +90,7 @@
   function setPhase(p) {
     phase = p;
     phaseT = 0;
+    Scene.setAimMode(p === 'aim');   // show/hide the aim reticle
     updateActionBtn();
     updateTimerBar();
   }
@@ -108,8 +114,12 @@
   }
 
   function resolveGrab() {
-    const cand = Scene.grabCandidate();      // nearest plush within reach (or null)
-    if (cand && Math.random() < GRAB_CHANCE) Scene.attach(cand);
+    const cand = Scene.grabCandidate();      // { item, dist, reach, typeId } or null
+    if (!cand) return;                       // nothing under the claw → clean miss
+    const align = clamp(1 - cand.dist / cand.reach, 0, 1); // 1 = dead-centered
+    const grip = GRIP_BY_RARITY[PLUSH_BY_ID[cand.typeId].rarity] ?? 1;
+    const chance = clamp((GRAB_MIN + (GRAB_MAX - GRAB_MIN) * Math.pow(align, AIM_SHARPNESS)) * grip, 0, 0.97);
+    if (Math.random() < chance) Scene.attach(cand.item);
   }
 
   function finishCarryDrop(kind) {

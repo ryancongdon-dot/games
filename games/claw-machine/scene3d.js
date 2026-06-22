@@ -35,6 +35,7 @@ const Scene = (() => {
   let clawGroup, clawHead, trolley, cable, prongs = [];
   let clawBody;
   let keyLight, accentLight;
+  let reticle, raycaster, aimMode = false;
   let frameMats = [], neonMats = [], floorMat, glassMat;
   let plushTypes = [];      // injected from game.js (PLUSH_TYPES)
   let palette = null;
@@ -368,6 +369,50 @@ const Scene = (() => {
     world.addBody(clawBody);
   }
 
+  // Aim reticle: a glowing ring projected straight down from the claw onto the
+  // top of the heap. Color shifts red→green by how well-centered the claw is over
+  // the nearest plush, teaching the location-based grab mechanic.
+  function buildReticle() {
+    const geo = new THREE.RingGeometry(0.16, 0.235, 40);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x66ff99, transparent: true, opacity: 0.95,
+      side: THREE.DoubleSide, depthTest: false,
+    });
+    reticle = new THREE.Mesh(geo, mat);
+    reticle.rotation.x = -Math.PI / 2;
+    reticle.renderOrder = 6;
+    reticle.visible = false;
+    scene.add(reticle);
+    raycaster = new THREE.Raycaster();
+  }
+
+  function nearestDist(wx, wz) {
+    let best = Infinity;
+    for (const it of pile) {
+      const d = Math.hypot(it.body.position.x - wx, it.body.position.z - wz);
+      if (d < best) best = d;
+    }
+    return best;
+  }
+
+  function updateReticle() {
+    if (!reticle) return;
+    if (!aimMode) { reticle.visible = false; return; }
+    const wx = toWorldX(clawState.x), wz = toWorldZ(clawState.z);
+    // drop a ray from the rail straight down to find the heap surface
+    raycaster.set(new THREE.Vector3(wx, RAIL_TOP, wz), new THREE.Vector3(0, -1, 0));
+    const hits = raycaster.intersectObjects(pile.map((p) => p.mesh), true);
+    const y = hits.length ? hits[0].point.y + 0.03 : 0.06;
+    reticle.position.set(wx, y, wz);
+    reticle.visible = true;
+    // tint by alignment with the nearest plush (red = poor, green = dead-on)
+    const align = clamp(1 - nearestDist(wx, wz) / GRASP, 0, 1);
+    reticle.material.color.setHSL(lerp(0.0, 0.33, align), 0.9, 0.55);
+    reticle.material.opacity = 0.55 + 0.4 * align;
+    const s = 1 + Math.sin(performance.now() * 0.006) * 0.06;
+    reticle.scale.set(s, s, s);
+  }
+
   // ---------------------------------------------------------------------------
   // Per-frame
   // ---------------------------------------------------------------------------
@@ -486,6 +531,7 @@ const Scene = (() => {
 
     buildGeometries();
     buildCabinet();
+    buildReticle();
     if (pal) applyTheme(pal);
     resize();
 
@@ -521,7 +567,8 @@ const Scene = (() => {
     clawState.x = x; clawState.z = z; clawState.drop = drop; clawState.prong = prong;
   }
 
-  // nearest grabbable plush under the claw (horizontal reach), or null
+  // nearest grabbable plush under the claw, with how centered the claw is over it.
+  // Returns { item, dist, reach, typeId } or null (nothing within reach).
   function grabCandidate() {
     const wx = toWorldX(clawState.x), wz = toWorldZ(clawState.z);
     let best = null, bestD = GRASP;
@@ -530,8 +577,10 @@ const Scene = (() => {
       const d = Math.hypot(dx, dz);
       if (d < bestD && it.body.position.y < GRAB_Y + 0.7) { bestD = d; best = it; }
     }
-    return best;
+    return best ? { item: best, dist: bestD, reach: GRASP, typeId: best.typeId } : null;
   }
+
+  function setAimMode(b) { aimMode = b; if (reticle) reticle.visible = b; }
 
   function attach(item) {
     if (!item) return;
@@ -608,12 +657,13 @@ const Scene = (() => {
     stepPhysics(dt);
     syncMeshes();
     updateCollecting(dt);
+    updateReticle();
     updateCamera();
     renderer.render(scene, camera);
   }
 
   return {
     init, resize, update, setClaw, fillPile, reset, applyTheme,
-    grabCandidate, attach, release, consumeWin, hasHeld, heldTypeId,
+    grabCandidate, attach, release, consumeWin, hasHeld, heldTypeId, setAimMode,
   };
 })();
