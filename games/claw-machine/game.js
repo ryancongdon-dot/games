@@ -26,6 +26,8 @@
     { id: 'penguin', name: 'Penguin',    rarity: 'uncommon',  points: 25,  weight: 13, body: '#3a4a63', belly: '#fdfdfd', accent: '#f2b134', ear: 'none'    },
     { id: 'unicorn', name: 'Unicorn',    rarity: 'rare',      points: 60,  weight: 7,  body: '#e7d7ff', belly: '#ffffff', accent: '#b98cff', ear: 'pointed', horn: true },
     { id: 'dragon',  name: 'Dragon',     rarity: 'legendary', points: 150, weight: 3,  body: '#7ad17a', belly: '#dff5cf', accent: '#3f9b54', ear: 'pointed', horn: true },
+    // Real glTF model prize (models/fox.glb). Colors are the pre-load fallback look.
+    { id: 'foxy',    name: 'Foxy',       rarity: 'rare',      points: 70,  weight: 6,  body: '#e0712b', belly: '#f3e9da', accent: '#3a2a20', ear: 'pointed', model: 'fox.glb' },
   ];
   const PLUSH_BY_ID = Object.fromEntries(PLUSH_TYPES.map(p => [p.id, p]));
   const RARITY_COLOR = { common: '#9fb2c9', uncommon: '#5ec8e0', rare: '#c08bff', legendary: '#ffcc4d' };

@@ -41,6 +41,8 @@ const Scene = (() => {
   let plushTypes = [];      // injected from game.js (PLUSH_TYPES)
   let palette = null;
   const matCache = {};      // per-type materials
+  const modelCache = {};    // per-type loaded glTF templates (id -> Group)
+  const MODEL_DIR = 'models/';
 
   // claw target (set by game each frame)
   const clawState = { x: 0.05, z: 0.06, drop: 0, prong: 0 };
@@ -81,7 +83,66 @@ const Scene = (() => {
     return m;
   }
 
+  // ---------------------------------------------------------------------------
+  // Optional real glTF models (drop a .glb in models/ and set `model` on a type).
+  // Any model is auto-centered and scaled to plush size; falls back to the
+  // procedural mesh until/unless the model loads.
+  // ---------------------------------------------------------------------------
+  function loadModels() {
+    if (typeof THREE.GLTFLoader !== 'function') return;
+    const loader = new THREE.GLTFLoader();
+    for (const t of plushTypes) {
+      if (!t.model) continue;
+      loader.load(MODEL_DIR + t.model,
+        (gltf) => {
+          try { modelCache[t.id] = buildModelTemplate(gltf); swapExisting(t.id); }
+          catch (e) { console.warn('[scene3d] model build failed:', t.id, e); }
+        },
+        undefined,
+        (err) => console.warn('[scene3d] model load failed (using fallback):', t.id, err));
+    }
+  }
+
+  function buildModelTemplate(gltf) {
+    const group = new THREE.Group();
+    gltf.scene.updateMatrixWorld(true);
+    gltf.scene.traverse((o) => {
+      if (!o.isMesh) return;
+      const geo = o.geometry.clone();
+      geo.applyMatrix4(o.matrixWorld);   // bake transform; render static (bind pose)
+      if (geo.deleteAttribute) { geo.deleteAttribute('skinIndex'); geo.deleteAttribute('skinWeight'); }
+      const src = Array.isArray(o.material) ? o.material : [o.material];
+      const mats = src.map((m) => { const c = m.clone(); c.skinning = false; return c; });
+      const mesh = new THREE.Mesh(geo, mats.length === 1 ? mats[0] : mats);
+      mesh.castShadow = true;
+      group.add(mesh);
+    });
+    // normalize: center at origin, scale to roughly plush size
+    const box = new THREE.Box3().setFromObject(group);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const s = (PLUSH_R * 2.4) / maxDim;
+    for (const m of group.children) {
+      m.geometry.translate(-center.x, -center.y, -center.z);
+      m.geometry.scale(s, s, s);
+    }
+    return group;
+  }
+
+  function swapExisting(id) {
+    const t = plushTypes.find((p) => p.id === id);
+    if (!t) return;
+    for (const it of pile) {
+      if (it.typeId !== id) continue;
+      scene.remove(it.mesh);
+      it.mesh = makePlushMesh(t);
+      scene.add(it.mesh);
+    }
+  }
+
   function makePlushMesh(t) {
+    if (t.model && modelCache[t.id]) return modelCache[t.id].clone(true);
     const M = typeMats(t);
     const g = new THREE.Group();
     const body = new THREE.Mesh(PLUSH_GEO.body, M.body);
@@ -769,6 +830,7 @@ const Scene = (() => {
     buildGeometries();
     buildCabinet();
     buildReticle();
+    loadModels();           // async; prizes pop in when their .glb loads
     if (pal) applyTheme(pal);
     initPost();
     resize();

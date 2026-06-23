@@ -42,7 +42,11 @@ python3 -m http.server 8000
 ```
 
 The 3D libraries are vendored locally (`games/claw-machine/vendor/`), so the game
-still works offline and by double-clicking — no network or npm needed.
+still works offline and by double-clicking — no network or npm needed. (One
+exception: real `.glb` prize models load over the network, so they only appear
+when the game is **served over http(s)** — e.g. GitHub Pages or the command
+above — not when opening the file directly. Without them the game falls back to
+the built-in shapes.)
 
 ## Project layout
 ```
@@ -54,20 +58,44 @@ games/
     game.js                # state machine, scoring, UI, controls
     scene3d.js             # WebGL 3D scene + cannon.js physics (Three.js)
     audio.js               # generated chiptune music + SFX (Web Audio)
-    vendor/                # three.min.js (r0.149 UMD) + cannon.min.js (vendored)
+    models/                # optional .glb prize models (e.g. fox.glb)
+    vendor/                # three.min.js + GLTFLoader.js + cannon.min.js
 ```
+
+## Adding your own 3D prize models
+The game can use real modeled prizes (glTF/`.glb`) instead of the built-in
+shapes — each model is **auto-centered and auto-scaled** to plush size, so any
+reasonably-shaped `.glb` just works:
+
+1. Put the file in `games/claw-machine/models/`, e.g. `models/puppy.glb`.
+2. Add (or edit) a prize in `PLUSH_TYPES` at the top of `game.js` and give it a
+   `model:` field — the `body`/`belly`/`accent` colors are just the fallback look
+   used until the model loads:
+   ```js
+   { id:'puppy', name:'Puppy', rarity:'uncommon', points:25, weight:14,
+     body:'#d9b48c', belly:'#fff', accent:'#7a5a3a', ear:'round', model:'puppy.glb' }
+   ```
+3. Serve over http(s) (Pages, or `python3 -m http.server`) and it appears in the heap.
+
+Good sources for free models: **poly.pizza**, **Sketchfab** (filter
+*Downloadable* + a license you like), **quaternius.com** and **kenney.nl** (both
+CC0). Prefer **CC0** (no strings); **CC-BY** is fine but must be credited below.
+
+### Credits
+- **Fox** (`models/fox.glb`) — model by *PixelMannen* (CC0 1.0), rig & animation by
+  *@tomkranis* (CC BY 4.0), via the Khronos glTF-Sample-Models repository.
 
 ## Roadmap → "real app-store game"
 Built so it can keep growing:
 
 - **Graphics** — real 3D (Three.js) with a hand-written post pipeline: HDR scene
   buffer → bright-pass → separable Gaussian bloom → exposure tone-map composite,
-  plus procedural PMREM environment lighting and a glossy reflective floor. The
-  next jump is **modeled glTF plushies/props** — they drop into `makePlushMesh`
-  (scene3d.js) without touching the state machine. (Fetching CC0 models needs a
-  network the build env may block; supply `.glb` files in the repo to wire them in.)
+  plus procedural PMREM environment lighting and a glossy reflective floor.
+  **Modeled glTF prizes** are supported now (see "Adding your own 3D prize
+  models" above) — drop in `.glb` files for richer art without touching the state
+  machine.
 - **Physics** — cannon.js drives the plush heap and claw collisions. Tune mass,
-  friction, and `GRASP`/`GRAB_CHANCE` for feel.
+  friction, and `GRASP`/the grab curve for feel.
 - **Audio** — `audio.js` generates music + SFX procedurally. Replace with licensed
   tracks behind the same `GameAudio.play()` / `startMusic()` API.
 - **Monetization** — the "Get Free Coins" button is a stub where a rewarded ad or
