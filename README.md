@@ -33,6 +33,39 @@ unlock thresholds in `THEMES`. Scene/physics/render knobs (cabinet size, grab
 reach `GRASP`, heap size `PILE_TARGET`, and the `BLOOM` settings) live in
 [`scene3d.js`](games/claw-machine/scene3d.js).
 
+### 🎳 Pin Kings — `games/bowling/`
+A **real 3D** league-bowling game (WebGL + cannon.js physics) with a deliberately
+**clean, "not jumbled" look** inspired by *Dave the Diver*: the scene renders to a
+low-resolution buffer and is upscaled **nearest-neighbour** for crisp chunky pixels,
+with distinct depth layers (sharp warm lane up front, hazy cool background) and
+**restrained lighting** — no heavy bloom. The 3D canvas is pixelated; the flat,
+high-contrast HUD sits crisply on top in the corners.
+
+The heart of it is a **four-beat shot**: slide your **aim**, then lock a moving bar
+for **POWER**, **CURVE** (which way & how much it hooks), and **SPIN** (rev rate,
+which amplifies the back-end hook). Then the ball rolls with real physics into a
+10-pin rack.
+
+**How to play**
+- `◀ ▶` move your start spot on the approach, then **LOCK AIM**.
+- Lock the moving bar three times: **POWER → CURVE → SPIN** (SPIN locks = throw).
+- Desktop: **arrow keys** to aim, **Space/Enter** to lock each bar.
+- Full standard **10-frame scoring** (strikes, spares, 10th-frame bonus balls).
+- Beat **140** to win the **league night**; your week record & best save locally.
+
+**Tuning** — shot feel lives in the `SHOT` block at the top of
+[`games/bowling/scene3d.js`](games/bowling/scene3d.js) (`speedMin/Max`, `drift`,
+`hookMin/Max`, `backEnd`, `spinViz`) — bowling feel needs a few frames of playtesting
+to dial in. The pixel crunch is the `PIXEL` constant in the same file; meter speeds
+and the 140 win line live at the top of [`game.js`](games/bowling/game.js).
+
+> **Roadmap toward the bigger game** (*Dave the Diver*-style story + side quests
+> around the alley — cooking pizza, fixing arcade machines — wrapped in a league
+> season): this build is the playable **bowling core**. A hub/world, characters,
+> dialogue, and the side-quest mini-games layer on top of this same engine. A PS5 /
+> Switch 2 release would be a later port to Unity/Unreal (which need licensed
+> console devkits); the design and feel here carry over directly.
+
 ## Run it
 Just open `index.html` in a browser, or serve the folder:
 
@@ -55,6 +88,12 @@ games/
     scene3d.js             # WebGL 3D scene + cannon.js physics (Three.js)
     audio.js               # generated chiptune music + SFX (Web Audio)
     vendor/                # three.min.js (r0.149 UMD) + cannon.min.js (vendored)
+  bowling/
+    index.html             # game shell
+    style.css              # flat, high-contrast corner HUD (crisp over pixelated 3D)
+    game.js                # shot state machine (aim/power/curve/spin), 10-pin scoring, league
+    scene3d.js             # WebGL 3D lane + cannon.js physics, pixelated render, SHOT tuning
+    vendor/                # three.min.js + cannon.min.js (vendored, self-contained)
 ```
 
 ## Roadmap → "real app-store game"

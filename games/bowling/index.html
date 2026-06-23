@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#141a30" />
+  <title>Pin Kings 🎳</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- crisp pixelated 3D lane -->
+    <canvas id="game"></canvas>
+
+    <!-- top-left: frame / ball / league (flat HUD panel) -->
+    <div class="hud hud-tl">
+      <div class="panel">
+        <div id="frame-label" class="big">Frame 1</div>
+        <div id="ball-label" class="sub">Ball 1</div>
+        <div id="league-line" class="league">Week 1 · 0–0</div>
+      </div>
+    </div>
+
+    <!-- top-right: running total -->
+    <div class="hud hud-tr">
+      <div class="panel score">
+        <div class="sub">SCORE</div>
+        <div id="total" class="big">0</div>
+      </div>
+    </div>
+
+    <!-- bottom: scoresheet (10 frames) -->
+    <div id="scoresheet" class="scoresheet"></div>
+
+    <!-- shot readout chips -->
+    <div id="shot-readout" class="readout hidden">
+      <span class="chip">PWR <b id="ro-power">0</b></span>
+      <span class="chip">CRV <b id="ro-curve">0</b></span>
+      <span class="chip">SPN <b id="ro-spin">0</b></span>
+    </div>
+
+    <!-- the moving shot meter -->
+    <div id="meter-wrap" class="meter hidden">
+      <div id="meter-label" class="meter-label">POWER</div>
+      <div class="meter-track">
+        <div id="meter-center" class="meter-center hidden"></div>
+        <div id="meter-fill" class="meter-fill"></div>
+        <div id="meter-tick" class="meter-tick"></div>
+      </div>
+    </div>
+
+    <!-- phase hint + controls -->
+    <div class="controls">
+      <div id="phase-hint" class="hint">Press PLAY</div>
+      <div class="ctl-row">
+        <button id="btn-left" class="dbtn" aria-label="Move left">◀</button>
+        <button id="btn-action" class="action">PLAY</button>
+        <button id="btn-right" class="dbtn" aria-label="Move right">▶</button>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- title overlay -->
+    <div id="overlay-title" class="overlay">
+      <div class="card">
+        <h1>PIN<span>KINGS</span></h1>
+        <p>League night at the alley. Set your <b>aim</b>, then lock
+           <b>POWER</b>, <b>CURVE</b> and <b>SPIN</b> — and bring the hook home. 🎳</p>
+        <ul class="how">
+          <li>◀ ▶ move your start spot, then <b>LOCK</b> each bar</li>
+          <li>CURVE sets the hook side &amp; amount; SPIN amplifies the back-end</li>
+          <li>10 frames · beat <b>140</b> to win the league night</li>
+        </ul>
+        <div id="title-league" class="title-league"></div>
+        <button id="btn-play" class="primary">PLAY</button>
+      </div>
+    </div>
+
+    <!-- results overlay -->
+    <div id="overlay-results" class="overlay hidden">
+      <div class="card">
+        <h2>League Night</h2>
+        <div id="result-body"></div>
+        <button id="btn-again" class="primary">Next Game</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/cannon.min.js"></script>
+  <script src="scene3d.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
