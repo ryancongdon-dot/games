@@ -83,7 +83,8 @@ body {
 .spot .sub { font-size: 12px; color: #9fb4dd; margin-top: 2px; }
 .spot.lanes { background: radial-gradient(circle at 50% 30%, #1c4a7a, #0b1f33); border-color: rgba(143, 225, 255, 0.4); }
 .spot.arcade { background: radial-gradient(circle at 50% 30%, #6d2350, #2a0f23); }
-.spot.pizza, .spot.shop { opacity: 0.78; }
+.spot.shop { background: radial-gradient(circle at 50% 30%, #4a3a1c, #221a0b); }
+.spot.pizza { opacity: 0.78; }
 
 /* ---- standings board ---- */
 .board {
@@ -106,6 +107,31 @@ body {
 
 .hub-foot { text-align: center; color: #6f80a0; font-size: 13px; margin-top: 22px; }
 .hub-foot a { color: #8fb0e0; text-decoration: none; }
+
+/* ---- pro shop ---- */
+.ball-list { display: flex; flex-direction: column; gap: 12px; }
+.ball-card {
+  display: grid; grid-template-columns: 58px 1fr auto; align-items: center; gap: 14px;
+  background: linear-gradient(180deg, #18253f, #101a30);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px; padding: 14px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+}
+.ball-card.on { border-color: rgba(255, 210, 63, 0.6); }
+.ball-orb { width: 52px; height: 52px; border-radius: 50%; box-shadow: inset -4px -5px 8px rgba(0,0,0,0.45); }
+.ball-name { font-size: 17px; font-weight: 900; }
+.ball-name .free { font-size: 11px; color: #39d98a; font-weight: 800; vertical-align: middle; }
+.ball-stats { font-size: 12px; color: #8fe1ff; font-weight: 700; margin: 3px 0; letter-spacing: 0.3px; }
+.ball-desc { font-size: 12px; color: #9fb4dd; line-height: 1.35; }
+.ball-btn {
+  border: none; border-radius: 12px; padding: 12px 16px; font-size: 14px; font-weight: 900;
+  letter-spacing: 0.5px; cursor: pointer; white-space: nowrap; color: #08121f;
+  background: linear-gradient(180deg, #ffe07a, #ffb43f); box-shadow: 0 4px 0 #c97f1e;
+}
+.ball-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #c97f1e; }
+.ball-btn.equip { background: linear-gradient(180deg, #8fe1ff, #4aa6d8); box-shadow: 0 4px 0 #2c6f96; }
+.ball-btn.equipped { background: rgba(255,210,63,0.18); color: #ffd23f; box-shadow: none; cursor: default; border: 2px solid rgba(255,210,63,0.5); }
+.ball-btn:disabled { filter: grayscale(0.5) brightness(0.85); cursor: not-allowed; }
 
 /* ---- toast ---- */
 .toast {

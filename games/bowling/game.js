@@ -360,10 +360,14 @@
     renderSheet();
     updateLabels();
     syncSliders();
+    // equip the ball chosen in the Pro Shop (weight -> pin carry, hook, colour)
+    const ball = L ? L.equippedBall() : null;
+    if (ball) Scene.setBall(ball);
     const n = L && L.activeNight();
-    $('title-league').textContent = n
+    const ballNote = ball ? ` · 🎳 ${ball.name} (${ball.weight} lb)` : '';
+    $('title-league').textContent = (n
       ? `Week ${n.week} — ${L.player} vs ${n.opp} · beat ${n.oppScore} to win the night`
-      : 'Practice game — roll for a high score';
+      : 'Practice game — roll for a high score') + ballNote;
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

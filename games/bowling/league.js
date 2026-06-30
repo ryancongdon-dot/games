@@ -12,6 +12,16 @@ const League = (() => {
   const OPPONENTS = ['Gutter Rats', 'Split Happens', 'Lane Wolves', 'Alley Cats', 'Strike Force', 'Pin Pals'];
   const WEEKS = OPPONENTS.length;
 
+  // Pro Shop catalog. weight(lb) drives pin carry (mass); hook scales the curve.
+  const BALLS = [
+    { id: 'house',  name: 'House Ball',      weight: 12, hook: 1.00, price: 0,   color: 0x1b9be0, desc: 'The free rental. Middle-weight, dependable.' },
+    { id: 'rookie', name: 'Rookie 8',        weight: 8,  hook: 0.90, price: 70,  color: 0x39d98a, desc: 'Light & easy to throw — but light on pin carry.' },
+    { id: 'pro14',  name: 'Pro Line 14',     weight: 14, hook: 1.10, price: 190, color: 0xff7d4d, desc: 'League standard: heavier hit, a touch more hook.' },
+    { id: 'hammer', name: 'The Hammer 16',   weight: 16, hook: 0.95, price: 360, color: 0xb84dff, desc: 'Max weight, max carry — but tough to curve.' },
+    { id: 'hook',   name: 'Hook Monster 15', weight: 15, hook: 1.50, price: 470, color: 0xffd23f, desc: 'Reactive shell: huge hook & heavy hit. Wild.' },
+  ];
+  function ballById(id) { return BALLS.find((b) => b.id === id) || BALLS[0]; }
+
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lerp = (a, b, t) => a + (b - a) * t;
   const ri = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
@@ -34,6 +44,8 @@ const League = (() => {
       standings: [PLAYER, ...OPPONENTS].map((name) => ({ name, w: 0, l: 0, pf: 0 })),
       activeNight: null,                             // {week, opp, oppScore}
       done: false,
+      owned: ['house'],                              // Pro Shop: ball ids owned
+      equipped: 'house',                             // ...and the one in hand
     };
   }
 
@@ -42,6 +54,7 @@ const League = (() => {
     if (save) return save;
     try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.schedule) save = s; } catch (e) { /* ignore */ }
     if (!save) save = fresh();
+    if (!save.owned) { save.owned = ['house']; save.equipped = 'house'; }   // migrate older saves
     return save;
   }
   function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } }
@@ -96,8 +109,24 @@ const League = (() => {
 
   function addMoney(n) { load().money += n; persist(); }
 
+  // ---- Pro Shop ----
+  function ballCatalog() { return BALLS.slice(); }
+  function owned() { return load().owned.slice(); }
+  function isOwned(id) { return load().owned.indexOf(id) >= 0; }
+  function equippedId() { return load().equipped; }
+  function equippedBall() { return ballById(load().equipped); }
+  function buyBall(id) {
+    const s = load(); const b = ballById(id);
+    if (isOwned(id)) return { ok: false, reason: 'owned' };
+    if (s.money < b.price) return { ok: false, reason: 'money' };
+    s.money -= b.price; s.owned.push(id); s.equipped = id; persist();
+    return { ok: true };
+  }
+  function equipBall(id) { const s = load(); if (isOwned(id)) { s.equipped = id; persist(); return true; } return false; }
+
   return {
     load, startSeason, standings, rank, currentOpp, beginNight, hasActiveNight, activeNight, recordNight, addMoney,
+    ballCatalog, owned, isOwned, equippedId, equippedBall, buyBall, equipBall,
     get money() { return load().money; },
     get week() { return load().week; },
     get weeks() { return WEEKS; },

@@ -67,6 +67,7 @@ const Scene = (() => {
   let shot = { aimX: 0, power: 0.7, curve: 0, spin: 0.4 };
   let curSpeed = 0;                 // current forward speed during the roll
   let steering = false;            // kinematic lateral control active?
+  let hookScale = 1;               // equipped ball's hook multiplier (Pro Shop)
   let rollTime = 0;
   let inGutter = false;
   let settleTimer = 0;
@@ -309,7 +310,7 @@ const Scene = (() => {
   function curveTargetX(p, aimX, curve, spin) {
     const mag = Math.abs(curve), dir = Math.sign(curve);
     const endX = aimX * (1 - mag);                       // more curve -> ends nearer middle
-    const bulge = mag * SHOT.bulge * (SHOT.spinBase + (1 - SHOT.spinBase) * spin);
+    const bulge = mag * SHOT.bulge * hookScale * (SHOT.spinBase + (1 - SHOT.spinBase) * spin);
     const hump = Math.sin(Math.PI * Math.pow(clamp(p, 0, 1), SHOT.humpSkew));
     return lerp(aimX, endX, p) + dir * bulge * hump;
   }
@@ -346,6 +347,17 @@ const Scene = (() => {
     }
   }
 
+  // equip a ball (from the Pro Shop): weight(lb) -> mass (pin carry),
+  // hook -> curve multiplier, color -> ball appearance.
+  function setBall(opts) {
+    opts = opts || {};
+    const lb = clamp(opts.weight != null ? opts.weight : 12, 6, 16);
+    ballBody.mass = lb * 0.4536;                 // lb -> kg
+    if (ballBody.type === CANNON.Body.DYNAMIC) ballBody.updateMassProperties();
+    hookScale = (opts.hook != null) ? opts.hook : 1;
+    if (opts.color != null && ballMesh) ballMesh.material.color.setHex(opts.color);
+  }
+
   // launch! opts: { power 0..1, curve -1..1, spin 0..1 }
   function roll(opts) {
     const power = clamp(opts.power, 0, 1);
@@ -360,8 +372,16 @@ const Scene = (() => {
     const laneTravel = 0.15 - Z_HEAD;
     const dpdt = speed / laneTravel;
     const dxdp = (curveTargetX(0.004, aimX, curve, spin) - curveTargetX(0, aimX, curve, spin)) / 0.004;
+
+    // glue the ball to the lane during the approach (KINEMATIC = no gravity, so
+    // it can't bounce on release); it switches back to DYNAMIC just before the
+    // pins so the strike is a real, mass-driven collision.
+    ballBody.type = CANNON.Body.KINEMATIC;
+    ballBody.updateMassProperties();
+    ballBody.position.y = BALL_R;
     ballBody.velocity.set(dxdp * dpdt, 0, -speed);
     ballBody.angularVelocity.set(speed / BALL_R, -Math.sign(curve) * spin * SHOT.spinViz, 0);
+    if (ballBody.wakeUp) ballBody.wakeUp();
 
     // wake every pin so the whole rack reacts (no sleeping pins shrugging off hits)
     for (const p of pins) { if (p.body.wakeUp) p.body.wakeUp(); p.body.sleepState = 0; }
@@ -398,6 +418,14 @@ const Scene = (() => {
         }
       } else {
         steering = false;
+      }
+
+      // once steering ends, hand back to a dynamic body so the strike is a real,
+      // mass-driven collision (heavier ball = more pin carry).
+      if (!steerActive && b.type === CANNON.Body.KINEMATIC) {
+        b.type = CANNON.Body.DYNAMIC;
+        b.updateMassProperties();
+        if (b.wakeUp) b.wakeUp();
       }
     }
 
@@ -567,7 +595,7 @@ const Scene = (() => {
   }
 
   return {
-    init, setRack, placeBall, previewShot, roll,
+    init, setRack, placeBall, previewShot, roll, setBall,
     set onSettled(fn) { onSettled = fn; },
     set onImpact(fn) { onImpact = fn; },
     get isRolling() { return rolling; },
