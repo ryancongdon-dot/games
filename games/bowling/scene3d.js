@@ -10,27 +10,37 @@ const Scene = (() => {
 
   // ---------- tuning / dimensions (metres) ----------
   const PIXEL = 3.0;          // bigger = chunkier pixels (the Dave-the-Diver crunch)
-  const LANE_LEN = 16.5;      // foul line (z=0) to pit (z=-LANE_LEN)
-  const LANE_HW = 0.53;       // lane half-width
+  // Real bowling dimensions: lane is ~60ft (18.29m) foul-line to head pin, ~41.5" wide.
+  const LANE_LEN = 21.0;      // foul line (z=0) to pit (z=-LANE_LEN)
+  const LANE_HW = 0.527;      // lane half-width (41.5" lane)
   const GUTTER_W = 0.24;      // gutter channel width each side
   const GUTTER_DROP = 0.16;   // how far gutters sit below the lane
-  const BALL_R = 0.108;
+  const BALL_R = 0.109;       // ~8.6" diameter ball
   const PIN_HW = 0.06;        // pin physics box half width/depth
   const PIN_HH = 0.19;        // pin physics box half height
-  const Z_HEAD = -14.4;       // head-pin z (nearest pin to bowler)
-  const DX = 0.1525;          // half the 12" pin spacing
+  const Z_HEAD = -18.29;      // head-pin z (60ft from the foul line)
+  const DX = 0.1524;          // half the 12" pin spacing
   const DZ = 0.264;           // row depth spacing
-  const FIXED = 1 / 60;
+  // Small fixed step prevents the fast ball from tunnelling THROUGH the thin pins
+  // (at 1/60 a 22mph ball moves further than a ball+pin radius per step).
+  const FIXED = 1 / 120;
+  const MAX_SUBSTEPS = 8;
 
   // ---------- SHOT FEEL (tune these after playing a few frames) ----------
   // Bowling "feel" always needs playtest iteration — these are the main dials.
+  // The shot. POWER -> realistic forward speed. CURVE/SPIN shape a KINEMATIC arc:
+  // the ball steers along a designed lateral path (a big U) while its forward
+  // motion stays physical, so the on-lane path is 100% predictable and the drawn
+  // preview line matches it exactly. Steering hands off to pure physics just
+  // before the pins so the strike is a real collision.
   const SHOT = {
-    speedMin: 7.0, speedMax: 12.0,   // forward m/s mapped from POWER 0..1
-    drift: 0.10,                     // initial sideways nudge per unit CURVE
-    hookMin: 0.10, hookMax: 0.50,    // lateral accel per unit CURVE, scaled by SPIN
-    backEnd: 0.45,                   // share of hook that only kicks in as ball slows
-    spinViz: 20,                     // visual ball spin (rad/s) at full curve+spin
-    fwdDecay: 0.03,                  // mild forward slow-down per second (keeps preview ≈ reality)
+    speedMin: 4.3, speedMax: 9.8,    // forward m/s (~10–22 mph) from POWER 0..1
+    bulge: 0.62,                     // max lateral arc (m) per unit CURVE at full SPIN
+    spinBase: 0.30,                  // arc present at SPIN 0 (fraction of bulge)
+    humpSkew: 1.18,                  // >1 pushes the arc's apex slightly down-lane
+    fwdDecay: 0.04,                  // mild forward slow-down per second
+    steerStopZ: 0.7,                 // stop steering this far before the head pin
+    spinViz: 9,                      // visual ball spin (rad/s) from curve+spin
   };
 
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -54,7 +64,9 @@ const Scene = (() => {
 
   // rolling state
   let rolling = false;
-  let hookDir = 0, hookMag = 0;     // applied as lateral accel while ball travels
+  let shot = { aimX: 0, power: 0.7, curve: 0, spin: 0.4 };
+  let curSpeed = 0;                 // current forward speed during the roll
+  let steering = false;            // kinematic lateral control active?
   let rollTime = 0;
   let inGutter = false;
   let settleTimer = 0;
@@ -178,18 +190,18 @@ const Scene = (() => {
     world = new CANNON.World();
     world.gravity.set(0, -9.82, 0);
     world.broadphase = new CANNON.NaiveBroadphase();
-    world.solver.iterations = 12;
+    world.solver.iterations = 18;
     world.defaultContactMaterial.friction = 0.25;
 
     const laneMat = new CANNON.Material('lane');
     const ballMat = new CANNON.Material('ball');
     const pinMat = new CANNON.Material('pin');
-    // low lane↔ball friction keeps forward speed ~steady, so the drawn preview
-    // path stays faithful to where the ball actually ends up.
+    // low lane↔ball friction keeps forward speed ~steady; low pin friction +
+    // springy ball↔pin / pin↔pin restitution makes struck pins fly & chain.
     world.addContactMaterial(new CANNON.ContactMaterial(laneMat, ballMat, { friction: 0.04, restitution: 0.02 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(laneMat, pinMat, { friction: 0.4, restitution: 0.05 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(ballMat, pinMat, { friction: 0.18, restitution: 0.35 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(pinMat, pinMat, { friction: 0.25, restitution: 0.3 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(laneMat, pinMat, { friction: 0.18, restitution: 0.08 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(ballMat, pinMat, { friction: 0.16, restitution: 0.5 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(pinMat, pinMat, { friction: 0.2, restitution: 0.45 }));
 
     // lane floor (top at y=0)
     const lane = new CANNON.Body({ mass: 0, material: laneMat,
@@ -217,7 +229,7 @@ const Scene = (() => {
     Scene._ballMat = ballMat;
 
     // ball
-    ballBody = new CANNON.Body({ mass: 6.4, material: ballMat, shape: new CANNON.Sphere(BALL_R) });
+    ballBody = new CANNON.Body({ mass: 7.0, material: ballMat, shape: new CANNON.Sphere(BALL_R) });
     ballBody.linearDamping = 0.0;     // forward speed handled by the SHOT model, not damping
     ballBody.angularDamping = 0.02;
     world.addBody(ballBody);
@@ -240,10 +252,10 @@ const Scene = (() => {
     b.__isPin = true;
     b.position.set(x, PIN_HH, z);
     b.allowSleep = true;
-    b.sleepSpeedLimit = 0.12;
+    b.sleepSpeedLimit = 0.14;
     b.sleepTimeLimit = 0.4;
-    b.angularDamping = 0.2;
-    b.linearDamping = 0.05;
+    b.angularDamping = 0.04;   // let knocked pins tumble & fly
+    b.linearDamping = 0.0;
     return b;
   }
 
@@ -288,36 +300,43 @@ const Scene = (() => {
     if (aimTarget) aimTarget.visible = true;
   }
 
-  // Simulate the ball's path with the SAME model the physics uses, so the drawn
-  // preview line actually matches where the ball goes (WYSIWYG aiming).
-  function simulatePath(aimX, power, curve, spin) {
-    const dt = 1 / 60;
-    const speed = lerp(SHOT.speedMin, SHOT.speedMax, power);
-    let x = aimX, z = 0.15, vx = curve * SHOT.drift, vz = -speed;
-    const hookMag = Math.abs(curve) * lerp(SHOT.hookMin, SHOT.hookMax, spin);
-    const dir = Math.sign(curve);
+  // ---- the kinematic curve ----
+  // progress p: 0 at the foul line, 1 at the head pin.
+  function progressFromZ(z) { return clamp((0.15 - z) / (0.15 - Z_HEAD), 0, 1); }
+
+  // designed lateral position at progress p — a big U that ends near the middle,
+  // straight when curve=0. (Forward speed is separate & physical.)
+  function curveTargetX(p, aimX, curve, spin) {
+    const mag = Math.abs(curve), dir = Math.sign(curve);
+    const endX = aimX * (1 - mag);                       // more curve -> ends nearer middle
+    const bulge = mag * SHOT.bulge * (SHOT.spinBase + (1 - SHOT.spinBase) * spin);
+    const hump = Math.sin(Math.PI * Math.pow(clamp(p, 0, 1), SHOT.humpSkew));
+    return lerp(aimX, endX, p) + dir * bulge * hump;
+  }
+
+  const GUTTER_LINE = LANE_HW - BALL_R * 0.4;
+
+  // The path is purely geometric in z, so the drawn preview is exactly the lane
+  // path the ball will steer along (independent of speed).
+  function pathPoints(aimX, curve, spin) {
     const pts = [];
-    for (let i = 0; i < 600; i++) {
-      pts.push(new THREE.Vector3(x, 0.025, z));
-      if (z <= Z_HEAD + 0.05) break;
-      if (Math.abs(x) < LANE_HW && hookMag > 0) {
-        const slow = clamp(1 + vz / 11, 0, 1);             // vz is negative; 0 fast -> 1 slow
-        vx += dir * hookMag * ((1 - SHOT.backEnd) + SHOT.backEnd * slow) * dt;
-      }
-      vz *= (1 - SHOT.fwdDecay * dt);
-      x += vx * dt; z += vz * dt;
-      if (Math.abs(x) > LANE_HW + 0.02) { pts.push(new THREE.Vector3(x, 0.025, z)); break; }
+    const N = 48;
+    for (let i = 0; i <= N; i++) {
+      const z = lerp(0.15, Z_HEAD, i / N);
+      const x = curveTargetX(progressFromZ(z), aimX, curve, spin);
+      pts.push(new THREE.Vector3(clamp(x, -LANE_HW, LANE_HW), 0.025, z));
+      if (Math.abs(x) > GUTTER_LINE) break;              // leaves the lane -> gutter
     }
     return pts;
   }
 
   // position the ball at the start spot and draw the predicted trajectory
-  function previewShot({ aimX, power, curve, spin }) {
+  function previewShot({ aimX, curve, spin }) {
     const x = clamp(aimX, -LANE_HW + BALL_R, LANE_HW - BALL_R);
     ballBody.velocity.set(0, 0, 0);
     ballBody.angularVelocity.set(0, 0, 0);
     ballBody.position.set(x, BALL_R, 0.15);
-    const pts = simulatePath(x, power, curve, spin);
+    const pts = pathPoints(x, curve, spin);
     aimLine.geometry.setFromPoints(pts);
     aimLine.visible = true;
     if (aimTarget) {
@@ -332,17 +351,26 @@ const Scene = (() => {
     const power = clamp(opts.power, 0, 1);
     const curve = clamp(opts.curve, -1, 1);
     const spin = clamp(opts.spin, 0, 1);
+    const aimX = ballBody.position.x;
+    shot = { aimX, power, curve, spin };
 
-    const speed = lerp(SHOT.speedMin, SHOT.speedMax, power);   // forward m/s
-    ballBody.velocity.set(curve * SHOT.drift, 0, -speed);      // slight initial drift toward hook side
-    // visual + physical roll: spin about Y (hook), roll about X (forward)
-    ballBody.angularVelocity.set(speed / BALL_R, curve * spin * SHOT.spinViz, 0);
+    const speed = lerp(SHOT.speedMin, SHOT.speedMax, power);
+    curSpeed = speed;
+    // initial lateral velocity = the path tangent at the foul line
+    const laneTravel = 0.15 - Z_HEAD;
+    const dpdt = speed / laneTravel;
+    const dxdp = (curveTargetX(0.004, aimX, curve, spin) - curveTargetX(0, aimX, curve, spin)) / 0.004;
+    ballBody.velocity.set(dxdp * dpdt, 0, -speed);
+    ballBody.angularVelocity.set(speed / BALL_R, -Math.sign(curve) * spin * SHOT.spinViz, 0);
 
-    hookDir = Math.sign(curve) || 0;
-    hookMag = Math.abs(curve) * lerp(SHOT.hookMin, SHOT.hookMax, spin); // lateral accel, amplified by spin
+    // wake every pin so the whole rack reacts (no sleeping pins shrugging off hits)
+    for (const p of pins) { if (p.body.wakeUp) p.body.wakeUp(); p.body.sleepState = 0; }
+
+    steering = true;
     rolling = true;
     rollTime = 0;
     settleTimer = 0;
+    inGutter = false;
     aimLine.visible = false;
     if (aimTarget) aimTarget.visible = false;
   }
@@ -352,20 +380,28 @@ const Scene = (() => {
     if (rolling) {
       rollTime += dt;
       const b = ballBody;
-      const onLane = b.position.y > -0.02 && Math.abs(b.position.x) < LANE_HW;
-      // gutter check
+      curSpeed *= (1 - SHOT.fwdDecay * dt);
+
       if (!inGutter && Math.abs(b.position.x) > LANE_HW + 0.01) inGutter = true;
 
-      // hook: lateral accel that grows as the ball slows (classic back-end hook)
-      if (onLane && !inGutter && hookMag > 0) {
-        const fwd = -b.velocity.z;
-        const slow = clamp(1 - fwd / 11, 0, 1);            // 0 fast -> 1 slow
-        const accel = hookMag * ((1 - SHOT.backEnd) + SHOT.backEnd * slow);
-        b.applyForce(new CANNON.Vec3(hookDir * accel * b.mass, 0, 0), b.position);
+      // kinematic lateral steering along the designed arc, until just before the
+      // pins — then hand off to pure physics so the strike is a real collision.
+      const steerActive = steering && b.position.z > (Z_HEAD + SHOT.steerStopZ) && !inGutter;
+      if (steerActive) {
+        const tx = curveTargetX(progressFromZ(b.position.z), shot.aimX, shot.curve, shot.spin);
+        if (Math.abs(tx) > GUTTER_LINE) {
+          steering = false;                          // arc runs off the lane -> gutter
+        } else {
+          b.velocity.x = (tx - b.position.x) / dt;   // steer sideways toward the path
+          b.velocity.z = -curSpeed;                  // hold the forward speed
+          b.position.y = BALL_R; b.velocity.y = 0;   // glued to the lane while steering
+        }
+      } else {
+        steering = false;
       }
     }
 
-    world.step(FIXED, dt, 3);
+    world.step(FIXED, dt, MAX_SUBSTEPS);
 
     if (rolling) {
       const ballStopped = ballBody.velocity.lengthSquared() < 0.04;
@@ -381,7 +417,7 @@ const Scene = (() => {
       else settleTimer = Math.max(0, settleTimer - dt * 0.5);
 
       // hard timeout so a stuck ball never hangs the turn
-      if (settleTimer > 0.7 || rollTime > 9) {
+      if (settleTimer > 0.7 || rollTime > 11) {
         rolling = false;
         finishRoll();
       }

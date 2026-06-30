@@ -61,11 +61,15 @@ low friction so the ball holds its forward speed (the same model the preview dra
   strike/spare chime.
 
 **Tuning** — shot feel lives in the `SHOT` block at the top of
-[`games/bowling/scene3d.js`](games/bowling/scene3d.js) (`speedMin/Max`, `drift`,
-`hookMin/Max`, `backEnd`, `spinViz`, `fwdDecay`) — bowling feel needs a few frames of
-playtesting to dial in, and the preview math mirrors these exactly. Camera framing is
-the `camHome`/`camLookHome`/`CAM` constants; the pixel crunch is `PIXEL` (same file);
-the 140 win line is at the top of [`game.js`](games/bowling/game.js).
+[`games/bowling/scene3d.js`](games/bowling/scene3d.js): `speedMin/Max` (POWER → ~10–22
+mph), `bulge` (how far the CURVE arcs across the lane), `spinBase` (arc at zero SPIN),
+`humpSkew` (where the arc peaks), `steerStopZ` (handoff to physics before the pins).
+The curve is **kinematic** — the ball steers along a designed arc while forward motion
+stays physical — so the drawn preview line is exactly the lane path. Lane uses real
+dimensions (60 ft, 41.5″ wide); physics runs at a small fixed step (`FIXED`, `MAX_SUBSTEPS`)
+to stop the fast ball tunnelling through the pins. Pin liveliness is the pin/ball
+`ContactMaterial` restitution + pin damping. Camera framing is `camHome`/`camLookHome`/`CAM`;
+pixel crunch is `PIXEL`; the 140 win line is at the top of [`game.js`](games/bowling/game.js).
 
 > **Roadmap toward the bigger game** (*Dave the Diver*-style story + side quests
 > around the alley — cooking pizza, fixing arcade machines — wrapped in a league
