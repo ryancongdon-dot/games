@@ -29,6 +29,7 @@
   const SEATS = 5;
   const DAY_MS = 90000;
   const PATIENCE_BASE = 20000;
+  const WAGE_CUT = 0.25;            // you only keep a small cut of pizza sales
 
   const S = {
     seats: new Array(SEATS).fill(null),        // {face, order:[ids], patience, patienceMax, state, say, fill}
@@ -216,12 +217,14 @@
   // ---------- shift end ----------
   function endShift() {
     S.running = false;
-    if (L) L.addMoney(S.earned);
-    $('sum-title').textContent = S.earned >= 150 ? 'Great shift! 🍕' : "That's a wrap";
+    const cut = Math.max(1, Math.round(S.earned * WAGE_CUT));
+    if (L) L.addMoney(cut);
+    $('sum-title').textContent = S.earned >= 180 ? 'Great shift! 🍕' : "That's a wrap";
     $('sum-body').innerHTML =
-      `<div class="big-score">$${S.earned}</div>` +
-      `<p>Served <b>${S.served}</b> happy customers.${L ? ` League funds: <b>$${L.money}</b>.` : ''}</p>` +
-      `<p class="fine">Tip: serve fresh customers fast and bake into the golden zone for combo bonuses.</p>`;
+      `<div class="big-score">$${cut}</div>` +
+      `<p>Sales <b>$${S.earned}</b> · your cut (${Math.round(WAGE_CUT * 100)}%) is <b>$${cut}</b>. Served ${S.served}.</p>` +
+      `${L ? `<p>League funds: <b>$${L.money}</b></p>` : ''}` +
+      `<p class="fine">Pizza is steady pocket money — the real bankroll comes from winning league nights.</p>`;
     $('overlay').classList.remove('hidden');
   }
   function newShift() {

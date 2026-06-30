@@ -84,26 +84,30 @@ const Scene = (() => {
   const camLook = camLookHome.clone();
   let aimTarget;              // marker disc at the predicted entry point
 
-  // ---------- pin mesh (tapered bowling pin) ----------
+  // ---------- pin mesh (real bowling-pin silhouette via LatheGeometry) ----------
+  let PIN_GEO = null;
+  function pinGeometry() {
+    if (PIN_GEO) return PIN_GEO;
+    // (radius, height) profile, centred on y=0 so it matches the physics box
+    const profile = [
+      [0.018, -0.190], [0.030, -0.176], [0.040, -0.152], [0.047, -0.112],
+      [0.046, -0.074], [0.038, -0.034], [0.027, 0.004], [0.021, 0.036],
+      [0.027, 0.076], [0.030, 0.106], [0.026, 0.140], [0.017, 0.170], [0.001, 0.190],
+    ].map((p) => new THREE.Vector2(p[0], p[1]));
+    PIN_GEO = new THREE.LatheGeometry(profile, 22);
+    return PIN_GEO;
+  }
   function makePinMesh() {
     const g = new THREE.Group();
-    const white = new THREE.MeshStandardMaterial({ color: 0xf4f4ef, roughness: 0.5, metalness: 0.0 });
-    const red = new THREE.MeshStandardMaterial({ color: 0xe8453c, roughness: 0.5 });
-    // body: a lathe-ish profile faked with stacked cylinders for a chunky look
-    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.045, 0.20, 12), white);
-    lower.position.y = -0.09; g.add(lower);
-    const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.052, 0.10, 12), white);
-    waist.position.y = 0.06; g.add(waist);
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.036, 0.06, 12), white);
-    neck.position.y = 0.14; g.add(neck);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.036, 12, 10), white);
-    head.position.y = 0.185; g.add(head);
-    // two red stripes on the neck
-    const s1 = new THREE.Mesh(new THREE.CylinderGeometry(0.0335, 0.0335, 0.018, 12), red);
-    s1.position.y = 0.115; g.add(s1);
-    const s2 = new THREE.Mesh(new THREE.CylinderGeometry(0.0315, 0.0315, 0.016, 12), red);
-    s2.position.y = 0.155; g.add(s2);
-    g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    const white = new THREE.MeshStandardMaterial({ color: 0xf7f7f2, roughness: 0.4, metalness: 0.0 });
+    const red = new THREE.MeshStandardMaterial({ color: 0xe8453c, roughness: 0.45 });
+    const body = new THREE.Mesh(pinGeometry(), white);
+    body.castShadow = true; g.add(body);
+    // two red collar stripes on the neck
+    for (const [yy, rr] of [[0.052, 0.0245], [0.084, 0.0285]]) {
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr, 0.011, 22), red);
+      ring.position.y = yy; ring.castShadow = true; g.add(ring);
+    }
     return g;
   }
 
@@ -200,9 +204,11 @@ const Scene = (() => {
     // low lane↔ball friction keeps forward speed ~steady; low pin friction +
     // springy ball↔pin / pin↔pin restitution makes struck pins fly & chain.
     world.addContactMaterial(new CANNON.ContactMaterial(laneMat, ballMat, { friction: 0.04, restitution: 0.0 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(laneMat, pinMat, { friction: 0.1, restitution: 0.08 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(ballMat, pinMat, { friction: 0.1, restitution: 0.55 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(pinMat, pinMat, { friction: 0.15, restitution: 0.55 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(laneMat, pinMat, { friction: 0.08, restitution: 0.08 }));
+    // low ball↔pin restitution = the ball PLOWS through (keeps momentum) instead
+    // of rebounding; the big mass ratio (heavy ball vs light pin) sends pins flying.
+    world.addContactMaterial(new CANNON.ContactMaterial(ballMat, pinMat, { friction: 0.1, restitution: 0.2 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(pinMat, pinMat, { friction: 0.12, restitution: 0.5 }));
 
     // lane floor (top at y=0)
     const lane = new CANNON.Body({ mass: 0, material: laneMat,
@@ -248,7 +254,7 @@ const Scene = (() => {
 
   // ---------- pins ----------
   function makePinBody(x, z) {
-    const b = new CANNON.Body({ mass: 1.35, material: Scene._pinMat,
+    const b = new CANNON.Body({ mass: 0.7, material: Scene._pinMat,   // light pins fly
       shape: new CANNON.Box(new CANNON.Vec3(PIN_HW, PIN_HH, PIN_HW)) });
     b.__isPin = true;
     b.position.set(x, PIN_HH, z);
@@ -352,7 +358,9 @@ const Scene = (() => {
   function setBall(opts) {
     opts = opts || {};
     const lb = clamp(opts.weight != null ? opts.weight : 12, 6, 16);
-    ballBody.mass = lb * 0.4536;                 // lb -> kg
+    // lb -> kg, scaled up so even the house ball SMASHES through the rack while
+    // heavier balls still carry noticeably more (big mass ratio vs light pins).
+    ballBody.mass = lb * 0.4536 * 1.6;
     if (ballBody.type === CANNON.Body.DYNAMIC) ballBody.updateMassProperties();
     hookScale = (opts.hook != null) ? opts.hook : 1;
     if (opts.color != null && ballMesh) ballMesh.material.color.setHex(opts.color);

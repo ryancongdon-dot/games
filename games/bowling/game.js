@@ -361,8 +361,8 @@
     updateLabels();
     syncSliders();
     // equip the ball chosen in the Pro Shop (weight -> pin carry, hook, colour)
-    const ball = L ? L.equippedBall() : null;
-    if (ball) Scene.setBall(ball);
+    const ball = (L && L.equippedBall()) || { weight: 12, hook: 1, color: 0x1b9be0 };
+    Scene.setBall(ball);
     const n = L && L.activeNight();
     const ballNote = ball ? ` · 🎳 ${ball.name} (${ball.weight} lb)` : '';
     $('title-league').textContent = (n

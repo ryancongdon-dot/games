@@ -54,7 +54,8 @@ customers walk in and sit at the counter, each with an order bubble and a patien
 Tap a customer to take their order, build their pizza from the topping palette (toppings
 fill the whole pie), bake into the golden zone with a timing meter, and serve before they
 walk out — juggling the rush as more arrive. Perfect, speedy pies build a combo for bigger
-tips; the shift's earnings go straight into your league money for the Pro Shop.
+tips; you keep a small **cut (25%)** of the night's sales as pocket money. Winning **league
+nights** ($80/win) is the real bankroll — pizza is a way to mix it up between matches.
 
 The bowling itself has a deliberately **clean, "not jumbled" look** inspired by *Dave the Diver*: the scene renders to a
 low-resolution buffer and is upscaled **nearest-neighbour** for crisp chunky pixels,

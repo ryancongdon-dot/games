@@ -98,7 +98,7 @@ const League = (() => {
       t.pf += ri(120, 185);
     }
     s.results.push({ week: n.week, you: playerScore, opp: n.opp, oppScore: n.oppScore, win });
-    s.money += win ? 60 : 25;
+    s.money += win ? 80 : 35;            // bowling is the main income
     s.best = Math.max(s.best || 0, playerScore);
     s.activeNight = null;
     s.week++;
