@@ -9,42 +9,37 @@
   <link rel="stylesheet" href="pizza.css" />
 </head>
 <body>
-  <div id="hub">
-    <header class="marquee compact">
-      <h1>PIZZA<span>COUNTER</span></h1>
-    </header>
-
-    <div class="chips">
-      <span class="chip">🧾 <b id="c-order">Order 1 / 8</b></span>
+  <div id="hub" class="pizza-page">
+    <!-- HUD -->
+    <div class="pz-hud">
       <span class="chip">💰 <b id="c-earned">$0</b></span>
+      <span class="chip">👍 <b id="c-served">0</b></span>
       <span class="chip">🔥 <b id="c-combo">x0</b></span>
+      <span class="chip clock">⏰ <b id="c-clock">1:30</b></span>
     </div>
 
-    <!-- the order ticket -->
-    <section id="ticket" class="ticket">
-      <div class="cust" id="cust">🙂</div>
-      <div class="order-info">
-        <div class="order-want">Wants <span id="order-toppings"></span></div>
-        <div class="patience"><div id="patience-fill" class="patience-fill"></div></div>
+    <!-- the restaurant scene: customers at the counter -->
+    <section class="scene">
+      <div class="scene-bg">
+        <div class="neon">🍕 LANESIDE PIZZA</div>
+        <div class="shelf"></div>
       </div>
+      <div id="seats" class="seats"></div>
+      <div class="counter"></div>
     </section>
 
-    <!-- the pizza you're building -->
-    <section class="kitchen">
-      <div id="pizza" class="pizza"><div class="pie"></div><div id="pizza-tops" class="pizza-tops"></div><div id="bake-glow" class="bake-glow"></div></div>
-    </section>
-
-    <!-- topping buttons -->
-    <section id="toppings" class="toppings"></section>
-
-    <!-- action area: BAKE, or the doneness meter -->
-    <section class="action-area">
-      <div id="bakebar" class="bakebar hidden">
-        <div class="bake-zones"><span class="zone-good"></span></div>
-        <div id="bake-needle" class="bake-needle"></div>
+    <!-- prep station -->
+    <section class="prep">
+      <div class="prep-left">
+        <div class="cook">🧑‍🍳</div>
+        <div id="prep-pizza" class="pizza"><div class="pie"></div><div id="pizza-tops" class="pizza-tops"></div></div>
       </div>
-      <button id="btn-main" class="bowl">BAKE 🔥</button>
-      <div id="feedback" class="feedback"></div>
+      <div class="prep-right">
+        <div id="prep-info" class="prep-info">Tap a customer to take their order</div>
+        <div id="toppings" class="toppings"></div>
+        <div id="bakebar" class="bakebar hidden"><span class="zone-good"></span><div id="bake-needle" class="bake-needle"></div></div>
+        <button id="btn-main" class="bowl hidden">BAKE 🔥</button>
+      </div>
     </section>
 
     <footer class="hub-foot"><a href="index.html">← Back to the Alley</a></footer>

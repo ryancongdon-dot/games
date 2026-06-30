@@ -1,221 +1,247 @@
-// pizza.js — the Pizza Counter side job. Build each order's pizza, bake it to the
-// golden zone, and serve before the customer's patience runs out. Earnings go to
-// your league money (League.addMoney) for the Pro Shop.
+// pizza.js — Pizza Counter "dinner rush". Customers sit at the counter with an
+// order bubble; tap one to take their order, build & bake their pizza, and serve
+// before their patience runs out. Serve as many as you can before close.
+// Earnings go to your league money (League.addMoney) for the Pro Shop.
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
   const L = window.League;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const ri = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
 
   const TOPPINGS = [
     { id: 'mush', icon: '🍄' }, { id: 'pep', icon: '🫑' }, { id: 'cheese', icon: '🧀' },
     { id: 'olive', icon: '🫒' }, { id: 'bacon', icon: '🥓' }, { id: 'pine', icon: '🍍' },
   ];
   const iconOf = (id) => (TOPPINGS.find((t) => t.id === id) || {}).icon || '?';
+  const FACES = ['🧑', '👩', '👨', '🧓', '👵', '🧔', '👱‍♀️', '👨‍🦰', '👩‍🦱', '🧑‍🦲', '👲', '🧕', '👳', '👩‍🦰'];
 
-  const ORDERS = 8;
-  const PATIENCE_MS = 15000;        // base patience; shrinks a little each order
-  const BAKE_GOOD = [60, 82];       // golden-zone doneness window
-  const BAKE_OK = [46, 92];         // edible (lower pay) window
+  // slots that cover the pie so a topping looks like a full layer, not 3 floaters
+  const SLOTS = (() => {
+    const s = [[50, 50]];
+    const ring = (r, n, off) => {
+      for (let i = 0; i < n; i++) { const a = (off + i * 360 / n) * Math.PI / 180; s.push([50 + r * Math.cos(a), 50 + r * Math.sin(a)]); }
+    };
+    ring(17, 6, 0);
+    ring(31, 8, 23);
+    return s;                                  // 15 evenly-spread slots
+  })();
+
+  const SEATS = 5;
+  const DAY_MS = 90000;
+  const PATIENCE_BASE = 20000;
 
   const S = {
-    phase: 'build',                 // build | bake | feedback | done
-    idx: 0,                         // order number 0..ORDERS-1
-    earned: 0, combo: 0,
-    need: [],                       // required topping ids
-    on: new Set(),                  // toppings currently on the pizza
-    patience: PATIENCE_MS, patienceMax: PATIENCE_MS,
-    doneness: 0, dir: 1,
-    last: 0,
+    seats: new Array(SEATS).fill(null),        // {face, order:[ids], patience, patienceMax, state, say, fill}
+    active: -1,
+    prep: { phase: 'idle', on: new Set(), doneness: 0, dir: 1 },
+    earned: 0, served: 0, combo: 0,
+    clock: DAY_MS, spawnTimer: 1400, last: 0, running: true,
   };
 
-  // ---- toppings palette ----
-  function renderToppingButtons() {
-    $('toppings').innerHTML = TOPPINGS.map((t) =>
-      `<button class="top-btn" data-top="${t.id}">${t.icon}</button>`).join('');
-    $('toppings').querySelectorAll('[data-top]').forEach((el) =>
-      el.addEventListener('click', () => toggleTopping(el.getAttribute('data-top'))));
+  // ---------- customers ----------
+  function spawnCustomer() {
+    const empty = [];
+    S.seats.forEach((s, i) => { if (!s) empty.push(i); });
+    if (!empty.length) return;
+    const i = empty[Math.floor(Math.random() * empty.length)];
+    const count = clamp(1 + Math.floor(S.served / 4), 1, 3);
+    const pool = TOPPINGS.map((t) => t.id).sort(() => Math.random() - 0.5);
+    const pat = Math.max(11000, PATIENCE_BASE - S.served * 300);
+    S.seats[i] = { face: FACES[Math.floor(Math.random() * FACES.length)], order: pool.slice(0, count), patience: pat, patienceMax: pat, state: 'wait', say: '' };
+    renderSeats();
   }
-  function toggleTopping(id) {
-    if (S.phase !== 'build') return;
-    if (S.on.has(id)) S.on.delete(id); else S.on.add(id);
-    paintPizza();
-    syncButtons();
+
+  function renderSeats() {
+    $('seats').innerHTML = S.seats.map((s, i) => {
+      if (!s) return `<div class="seat" data-seat="${i}"><div class="stool"></div></div>`;
+      const patPct = Math.round(clamp(s.patience / s.patienceMax, 0, 1) * 100);
+      const bubble = (s.state === 'served' || s.state === 'leaving')
+        ? `<div class="bubble say">${s.say}</div>`
+        : `<div class="bubble"><span class="b-tops">${s.order.map(iconOf).join('')}</span><div class="b-pat"><i style="width:${patPct}%"></i></div></div>`;
+      const cls = 'seat occupied' + (i === S.active ? ' active' : '') + (s.state === 'served' ? ' served' : '');
+      return `<div class="${cls}" data-seat="${i}">${bubble}<div class="person">${s.face}</div></div>`;
+    }).join('');
+    // cache patience fills + bind taps
+    $('seats').querySelectorAll('.seat').forEach((el) => {
+      const i = +el.getAttribute('data-seat');
+      const s = S.seats[i];
+      if (s) { s.fill = el.querySelector('.b-pat > i') || null; }
+      if (s && s.state === 'wait') el.addEventListener('click', () => selectSeat(i));
+    });
+  }
+
+  // ---------- prep ----------
+  function renderToppingButtons() {
+    $('toppings').innerHTML = TOPPINGS.map((t) => `<button class="top-btn" data-top="${t.id}">${t.icon}</button>`).join('');
+    $('toppings').querySelectorAll('[data-top]').forEach((el) => el.addEventListener('click', () => toggleTopping(el.getAttribute('data-top'))));
   }
   function syncButtons() {
-    $('toppings').querySelectorAll('[data-top]').forEach((el) =>
-      el.classList.toggle('on', S.on.has(el.getAttribute('data-top'))));
+    const dim = S.prep.phase !== 'build';
+    $('toppings').querySelectorAll('[data-top]').forEach((el) => {
+      el.classList.toggle('on', S.prep.on.has(el.getAttribute('data-top')));
+      el.disabled = dim;
+    });
   }
-
-  // scatter active toppings on the pie (stable positions per topping)
   function paintPizza() {
-    const spots = [[28, 30], [62, 26], [44, 48], [26, 62], [64, 60], [46, 74], [38, 40], [58, 44]];
-    let html = '', i = 0;
-    for (const id of S.on) {
-      for (let k = 0; k < 3; k++) {
-        const s = spots[(i * 3 + k) % spots.length];
-        const jx = ((i * 7 + k * 13) % 9) - 4, jy = ((i * 5 + k * 11) % 9) - 4;
-        html += `<span class="ptop" style="left:${s[0] + jx}%;top:${s[1] + jy}%">${iconOf(id)}</span>`;
-      }
-      i++;
+    const arr = [...S.prep.on];
+    if (!arr.length) { $('pizza-tops').innerHTML = ''; return; }
+    $('pizza-tops').innerHTML = SLOTS.map((p, i) =>
+      `<span class="ptop" style="left:${p[0]}%;top:${p[1]}%;--r:${(i * 47) % 360}deg">${iconOf(arr[i % arr.length])}</span>`
+    ).join('');
+  }
+
+  function selectSeat(i) {
+    if (!S.running || S.prep.phase === 'bake') return;
+    const s = S.seats[i];
+    if (!s || s.state !== 'wait') return;
+    S.active = i;
+    S.prep.phase = 'build';
+    S.prep.on = new Set();
+    renderPrep(); paintPizza(); renderSeats();
+  }
+
+  function renderPrep() {
+    const s = S.active >= 0 ? S.seats[S.active] : null;
+    if (!s) {
+      $('prep-info').innerHTML = 'Tap a customer to take their order';
+      $('btn-main').classList.add('hidden');
+      $('bakebar').classList.add('hidden');
+    } else {
+      $('prep-info').innerHTML = `Order: <span class="needs">${s.order.map(iconOf).join('')}</span> — add toppings &amp; bake`;
+      $('btn-main').classList.remove('hidden');
+      $('btn-main').textContent = S.prep.phase === 'bake' ? 'STOP! ✋' : 'BAKE 🔥';
+      $('btn-main').disabled = false;
+      $('bakebar').classList.toggle('hidden', S.prep.phase !== 'bake');
     }
-    $('pizza-tops').innerHTML = html;
+    syncButtons();
   }
 
-  // ---- order flow ----
-  function startOrder() {
-    S.phase = 'build';
-    S.on = new Set();
-    const count = clamp(1 + Math.floor(S.idx / 2), 1, 3);   // ramps 1 -> 3 toppings
-    const pool = TOPPINGS.map((t) => t.id).sort(() => Math.random() - 0.5);
-    S.need = pool.slice(0, count);
-    S.patienceMax = PATIENCE_MS - S.idx * 700;
-    S.patience = S.patienceMax;
-    S.doneness = 0; S.dir = 1;
-    $('cust').textContent = '🙂';
-    $('order-toppings').innerHTML = S.need.map((id) => `<span class="want-ic">${iconOf(id)}</span>`).join('');
-    $('bake-glow').style.opacity = 0;
-    $('bakebar').classList.add('hidden');
-    $('feedback').textContent = '';
-    $('feedback').className = 'feedback';
-    setMain('BAKE 🔥', false);
-    paintPizza(); syncButtons(); updateChips();
-  }
-
-  function setMain(label, disabled) {
-    const b = $('btn-main'); b.textContent = label; b.disabled = !!disabled; b.classList.remove('hidden');
+  function toggleTopping(id) {
+    if (S.prep.phase !== 'build') return;
+    if (S.prep.on.has(id)) S.prep.on.delete(id); else S.prep.on.add(id);
+    paintPizza(); syncButtons();
   }
 
   function onMain() {
-    if (S.phase === 'build') startBake();
-    else if (S.phase === 'bake') stopBake();
+    if (S.active < 0) return;
+    if (S.prep.phase === 'build') { S.prep.phase = 'bake'; S.prep.doneness = 0; S.prep.dir = 1; renderPrep(); }
+    else if (S.prep.phase === 'bake') serve();
   }
 
-  function startBake() {
-    S.phase = 'bake';
-    S.doneness = 0; S.dir = 1;
-    $('bakebar').classList.remove('hidden');
-    setMain('STOP! ✋', false);
-  }
-
-  function stopBake() {
-    S.phase = 'feedback';
-    $('btn-main').classList.add('hidden');
-    serve();
-  }
-
-  function bakeQuality() {
-    const d = S.doneness;
-    if (d >= BAKE_GOOD[0] && d <= BAKE_GOOD[1]) return 'perfect';
-    if (d >= BAKE_OK[0] && d <= BAKE_OK[1]) return 'ok';
-    return d < BAKE_OK[0] ? 'raw' : 'burnt';
+  function bakeQuality(d) {
+    if (d >= 60 && d <= 82) return 'perfect';
+    if (d >= 46 && d <= 92) return 'ok';
+    return d < 46 ? 'raw' : 'burnt';
   }
 
   function serve() {
-    const want = new Set(S.need);
-    const match = want.size === S.on.size && [...want].every((id) => S.on.has(id));
-    const q = bakeQuality();
-    const speedBonus = Math.round((S.patience / S.patienceMax) * 6);
-    let pay = 0, msg = '', cls = 'bad';
+    const i = S.active, s = S.seats[i];
+    if (!s) { resetPrep(); return; }
+    const want = new Set(s.order);
+    const match = want.size === S.prep.on.size && [...want].every((id) => S.prep.on.has(id));
+    const q = bakeQuality(S.prep.doneness);
+    const speed = Math.round((s.patience / s.patienceMax) * 6);
+    let pay = 0, say = '';
 
-    if (!match) { pay = 3; msg = 'Wrong toppings! 😠'; cls = 'bad'; S.combo = 0; $('cust').textContent = '😠'; }
-    else if (q === 'perfect') {
-      pay = 12 + 8 + speedBonus + S.combo * 2; S.combo++;
-      msg = `Perfect pie! 🤩 +$${pay}`; cls = 'great'; $('cust').textContent = '😍';
-    } else if (q === 'ok') {
-      pay = 12 + speedBonus; S.combo = 0;
-      msg = `Good enough. +$${pay}`; cls = 'ok'; $('cust').textContent = '🙂';
-    } else { // raw / burnt
-      pay = 6; S.combo = 0;
-      msg = q === 'burnt' ? `Burnt! 🔥 +$${pay}` : `Too raw! 🥶 +$${pay}`; cls = 'bad'; $('cust').textContent = '😕';
-    }
-    if (match && q !== 'perfect') { /* shows pie done */ }
-    $('bake-glow').style.opacity = (q === 'burnt') ? 0.55 : (match ? 0.3 : 0);
-    $('bake-glow').style.background = q === 'burnt'
-      ? 'radial-gradient(circle, rgba(40,20,0,0.7), transparent 70%)'
-      : 'radial-gradient(circle, rgba(255,180,60,0.5), transparent 70%)';
+    if (!match) { pay = 3; say = 'Not what I ordered 😠'; S.combo = 0; }
+    else if (q === 'perfect') { pay = 12 + 8 + speed + S.combo * 2; S.combo++; say = 'This is perfect! 🤩'; }
+    else if (q === 'ok') { pay = 12 + speed; S.combo = 0; say = 'This looks good! 😋'; }
+    else { pay = 6; S.combo = 0; say = q === 'burnt' ? 'A little burnt… 😕' : 'Kinda raw… 😬'; }
 
-    S.earned += pay;
-    flash(msg, cls);
-    updateChips();
-    setTimeout(nextOrder, 1500);
+    S.earned += pay; S.served += (match ? 1 : 0);
+    s.state = 'served'; s.say = `${say} +$${pay}`;
+    S.active = -1; resetPrep(); renderSeats(); updateHud();
+    const seatIdx = i;
+    setTimeout(() => { if (S.seats[seatIdx] && S.seats[seatIdx].state === 'served') { S.seats[seatIdx] = null; renderSeats(); } }, 1500);
   }
 
-  function customerLeft() {
-    S.phase = 'feedback';
-    $('btn-main').classList.add('hidden');
-    $('bakebar').classList.add('hidden');
-    S.combo = 0; $('cust').textContent = '😤';
-    flash('Customer left! 😤 +$0', 'bad');
-    updateChips();
-    setTimeout(nextOrder, 1400);
+  function resetPrep() {
+    S.prep.phase = 'idle'; S.prep.on = new Set(); paintPizza(); renderPrep();
   }
 
-  function flash(msg, cls) { const f = $('feedback'); f.textContent = msg; f.className = 'feedback show ' + cls; }
-
-  function nextOrder() {
-    S.idx++;
-    if (S.idx >= ORDERS) return endShift();
-    startOrder();
+  function customerLeaves(i) {
+    const s = S.seats[i]; if (!s) return;
+    s.state = 'leaving'; s.say = 'Forget it! 😤'; S.combo = 0;
+    if (S.active === i) { S.active = -1; resetPrep(); }
+    renderSeats(); updateHud();
+    setTimeout(() => { if (S.seats[i] && S.seats[i].state === 'leaving') { S.seats[i] = null; renderSeats(); } }, 1300);
   }
 
-  function updateChips() {
-    $('c-order').textContent = `Order ${Math.min(S.idx + 1, ORDERS)} / ${ORDERS}`;
+  function updateHud() {
     $('c-earned').textContent = `$${S.earned}`;
+    $('c-served').textContent = S.served;
     $('c-combo').textContent = `x${S.combo}`;
   }
+  function fmtClock(ms) { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
-  // ---- shift end ----
-  function endShift() {
-    S.phase = 'done';
-    if (L) L.addMoney(S.earned);
-    $('sum-title').textContent = S.earned >= 120 ? 'Great shift! 🍕' : 'Shift Over';
-    $('sum-body').innerHTML =
-      `<div class="big-score">$${S.earned}</div>` +
-      `<p>Tips &amp; pay added to your league funds${L ? ` — now <b>$${L.money}</b>.` : '.'}</p>` +
-      `<p class="fine">Bake into the golden zone, match the order, and serve fast for combo bonuses.</p>`;
-    $('overlay').classList.remove('hidden');
-  }
-
-  function newShift() {
-    S.idx = 0; S.earned = 0; S.combo = 0;
-    $('overlay').classList.add('hidden');
-    startOrder();
-  }
-
-  // ---- main loop (patience countdown + bake sweep) ----
+  // ---------- main loop ----------
   function loop(now) {
     requestAnimationFrame(loop);
     const dt = S.last ? now - S.last : 16; S.last = now;
-    if (S.phase === 'build') {
-      S.patience -= dt;
-      const f = clamp(S.patience / S.patienceMax, 0, 1);
-      const fill = $('patience-fill');
-      fill.style.width = (f * 100) + '%';
-      fill.style.background = f > 0.5 ? '#36d07a' : f > 0.25 ? '#ffd23f' : '#ff5d5d';
-      if (S.patience <= 0) customerLeft();
-    } else if (S.phase === 'bake') {
-      S.doneness += S.dir * (dt / 1000) * 95;       // sweep speed
-      if (S.doneness >= 100) { S.doneness = 100; S.dir = -1; }
-      else if (S.doneness <= 0) { S.doneness = 0; S.dir = 1; }
-      $('bake-needle').style.left = S.doneness + '%';
-      $('bake-glow').style.opacity = Math.min(0.5, S.doneness / 200);
+    if (!S.running) return;
+
+    S.clock -= dt;
+    $('c-clock').textContent = fmtClock(S.clock);
+    if (S.clock <= 0) { endShift(); return; }
+
+    // spawn customers (faster as the rush builds)
+    S.spawnTimer -= dt;
+    if (S.spawnTimer <= 0) {
+      spawnCustomer();
+      S.spawnTimer = Math.max(2600, 5200 - (DAY_MS - S.clock) / 20);
     }
+
+    // patience ticks for waiting customers (NOT the one you're serving)
+    for (let i = 0; i < SEATS; i++) {
+      const s = S.seats[i];
+      if (!s || s.state !== 'wait' || i === S.active) continue;
+      s.patience -= dt;
+      if (s.fill) {
+        const f = clamp(s.patience / s.patienceMax, 0, 1);
+        s.fill.style.width = (f * 100) + '%';
+        s.fill.style.background = f > 0.5 ? '#36d07a' : f > 0.25 ? '#ffd23f' : '#ff5d5d';
+      }
+      if (s.patience <= 0) customerLeaves(i);
+    }
+
+    // bake sweep
+    if (S.prep.phase === 'bake') {
+      S.prep.doneness += S.prep.dir * (dt / 1000) * 95;
+      if (S.prep.doneness >= 100) { S.prep.doneness = 100; S.prep.dir = -1; }
+      else if (S.prep.doneness <= 0) { S.prep.doneness = 0; S.prep.dir = 1; }
+      $('bake-needle').style.left = S.prep.doneness + '%';
+    }
+  }
+
+  // ---------- shift end ----------
+  function endShift() {
+    S.running = false;
+    if (L) L.addMoney(S.earned);
+    $('sum-title').textContent = S.earned >= 150 ? 'Great shift! 🍕' : "That's a wrap";
+    $('sum-body').innerHTML =
+      `<div class="big-score">$${S.earned}</div>` +
+      `<p>Served <b>${S.served}</b> happy customers.${L ? ` League funds: <b>$${L.money}</b>.` : ''}</p>` +
+      `<p class="fine">Tip: serve fresh customers fast and bake into the golden zone for combo bonuses.</p>`;
+    $('overlay').classList.remove('hidden');
+  }
+  function newShift() {
+    S.seats = new Array(SEATS).fill(null);
+    S.active = -1; S.earned = 0; S.served = 0; S.combo = 0;
+    S.clock = DAY_MS; S.spawnTimer = 1000; S.running = true;
+    resetPrep(); renderSeats(); updateHud();
+    $('overlay').classList.add('hidden');
   }
 
   function boot() {
     renderToppingButtons();
+    renderSeats(); updateHud(); renderPrep();
     $('btn-main').addEventListener('click', onMain);
     $('btn-again').addEventListener('click', newShift);
     $('btn-hub').addEventListener('click', () => { window.location.href = 'index.html'; });
     window.addEventListener('keydown', (e) => {
-      if (e.key === ' ' || e.key === 'Enter') {
-        if (S.phase === 'build' || S.phase === 'bake') onMain();
-        e.preventDefault();
-      }
+      if ((e.key === ' ' || e.key === 'Enter') && S.active >= 0) { onMain(); e.preventDefault(); }
     });
-    startOrder();
+    spawnCustomer();
     requestAnimationFrame(loop);
   }
 

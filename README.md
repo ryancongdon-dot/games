@@ -49,10 +49,12 @@ more **pin carry** (momentum through the rack); lighter deflects more. Its **hoo
 scales how far the curve arcs. On the approach the ball is held to the lane (it can't
 bounce on release) and switches to a real mass-driven body just before the pins.
 
-The **Pizza Counter** (`pizza.html`) is a side job: build each customer's order from the
-topping palette, bake into the golden zone with a timing meter, and serve before their
-patience runs out. Perfect pies build a combo for bigger tips; the shift's earnings go
-straight into your league money for the Pro Shop.
+The **Pizza Counter** (`pizza.html`) is a *Dave-the-Diver*-style dinner-rush side job:
+customers walk in and sit at the counter, each with an order bubble and a patience bar.
+Tap a customer to take their order, build their pizza from the topping palette (toppings
+fill the whole pie), bake into the golden zone with a timing meter, and serve before they
+walk out — juggling the rush as more arrive. Perfect, speedy pies build a combo for bigger
+tips; the shift's earnings go straight into your league money for the Pro Shop.
 
 The bowling itself has a deliberately **clean, "not jumbled" look** inspired by *Dave the Diver*: the scene renders to a
 low-resolution buffer and is upscaled **nearest-neighbour** for crisp chunky pixels,
