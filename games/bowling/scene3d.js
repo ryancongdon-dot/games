@@ -25,11 +25,12 @@ const Scene = (() => {
   // ---------- SHOT FEEL (tune these after playing a few frames) ----------
   // Bowling "feel" always needs playtest iteration — these are the main dials.
   const SHOT = {
-    speedMin: 7.0, speedMax: 12.5,   // forward m/s mapped from POWER 0..1
+    speedMin: 7.0, speedMax: 12.0,   // forward m/s mapped from POWER 0..1
     drift: 0.10,                     // initial sideways nudge per unit CURVE
-    hookMin: 0.15, hookMax: 0.55,    // lateral accel per unit CURVE, scaled by SPIN
-    backEnd: 0.40,                   // share of hook that only kicks in as ball slows
-    spinViz: 18,                     // visual ball spin (rad/s) at full curve+spin
+    hookMin: 0.10, hookMax: 0.50,    // lateral accel per unit CURVE, scaled by SPIN
+    backEnd: 0.45,                   // share of hook that only kicks in as ball slows
+    spinViz: 20,                     // visual ball spin (rad/s) at full curve+spin
+    fwdDecay: 0.03,                  // mild forward slow-down per second (keeps preview ≈ reality)
   };
 
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -58,12 +59,17 @@ const Scene = (() => {
   let inGutter = false;
   let settleTimer = 0;
   let onSettled = null;
+  let onImpact = null;              // fired when the ball first strikes a pin
+  let lastImpactMs = 0;
 
-  // camera rig
-  const camHome = new THREE.Vector3(0, 1.95, 3.0);
-  const camLookHome = new THREE.Vector3(0, 0.45, -6.5);
+  // camera rig — raised & tilted down so the ball sits in the UPPER-MIDDLE of
+  // the frame (clear of the bottom control panel) with the pins near the top.
+  const camHome = new THREE.Vector3(0, 2.6, 4.6);
+  const camLookHome = new THREE.Vector3(0, -0.7, -2.6);
+  const CAM = { trail: 4.5, lookAhead: 4.2, ease: 3.0 };  // chase-cam feel while rolling
   const camPos = camHome.clone();
   const camLook = camLookHome.clone();
+  let aimTarget;              // marker disc at the predicted entry point
 
   // ---------- pin mesh (tapered bowling pin) ----------
   function makePinMesh() {
@@ -178,7 +184,9 @@ const Scene = (() => {
     const laneMat = new CANNON.Material('lane');
     const ballMat = new CANNON.Material('ball');
     const pinMat = new CANNON.Material('pin');
-    world.addContactMaterial(new CANNON.ContactMaterial(laneMat, ballMat, { friction: 0.16, restitution: 0.02 }));
+    // low lane↔ball friction keeps forward speed ~steady, so the drawn preview
+    // path stays faithful to where the ball actually ends up.
+    world.addContactMaterial(new CANNON.ContactMaterial(laneMat, ballMat, { friction: 0.04, restitution: 0.02 }));
     world.addContactMaterial(new CANNON.ContactMaterial(laneMat, pinMat, { friction: 0.4, restitution: 0.05 }));
     world.addContactMaterial(new CANNON.ContactMaterial(ballMat, pinMat, { friction: 0.18, restitution: 0.35 }));
     world.addContactMaterial(new CANNON.ContactMaterial(pinMat, pinMat, { friction: 0.25, restitution: 0.3 }));
@@ -210,15 +218,26 @@ const Scene = (() => {
 
     // ball
     ballBody = new CANNON.Body({ mass: 6.4, material: ballMat, shape: new CANNON.Sphere(BALL_R) });
-    ballBody.linearDamping = 0.012;
-    ballBody.angularDamping = 0.012;
+    ballBody.linearDamping = 0.0;     // forward speed handled by the SHOT model, not damping
+    ballBody.angularDamping = 0.02;
     world.addBody(ballBody);
+
+    // fire an impact callback the first time the ball strikes a pin (for SFX)
+    ballBody.addEventListener('collide', (e) => {
+      const other = e.body;
+      if (!other || !other.__isPin) return;
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (now - lastImpactMs < 120) return;
+      lastImpactMs = now;
+      if (typeof onImpact === 'function') onImpact();
+    });
   }
 
   // ---------- pins ----------
   function makePinBody(x, z) {
     const b = new CANNON.Body({ mass: 1.5, material: Scene._pinMat,
       shape: new CANNON.Box(new CANNON.Vec3(PIN_HW, PIN_HH, PIN_HW)) });
+    b.__isPin = true;
     b.position.set(x, PIN_HH, z);
     b.allowSleep = true;
     b.sleepSpeedLimit = 0.12;
@@ -264,20 +283,48 @@ const Scene = (() => {
     ballBody.position.set(clamp(x, -LANE_HW + BALL_R, LANE_HW - BALL_R), BALL_R, 0.15);
     ballBody.quaternion.set(0, 0, 0, 1);
     ballBody.sleepState = 0;
+    if (typeof ballBody.wakeUp === 'function') ballBody.wakeUp();
     aimLine.visible = true;
-    setAim(x, 0);
+    if (aimTarget) aimTarget.visible = true;
   }
 
-  // draw the aim guide line from the ball toward target (curve preview = lateral bend)
-  function setAim(x, curve) {
+  // Simulate the ball's path with the SAME model the physics uses, so the drawn
+  // preview line actually matches where the ball goes (WYSIWYG aiming).
+  function simulatePath(aimX, power, curve, spin) {
+    const dt = 1 / 60;
+    const speed = lerp(SHOT.speedMin, SHOT.speedMax, power);
+    let x = aimX, z = 0.15, vx = curve * SHOT.drift, vz = -speed;
+    const hookMag = Math.abs(curve) * lerp(SHOT.hookMin, SHOT.hookMax, spin);
+    const dir = Math.sign(curve);
     const pts = [];
-    for (let i = 0; i <= 12; i++) {
-      const t = i / 12;
-      const z = -6.2 * t;
-      const bend = curve * 0.9 * t * t;        // quadratic preview of the hook
-      pts.push(new THREE.Vector3(x + bend, 0.02, 0.1 + z));
+    for (let i = 0; i < 600; i++) {
+      pts.push(new THREE.Vector3(x, 0.025, z));
+      if (z <= Z_HEAD + 0.05) break;
+      if (Math.abs(x) < LANE_HW && hookMag > 0) {
+        const slow = clamp(1 + vz / 11, 0, 1);             // vz is negative; 0 fast -> 1 slow
+        vx += dir * hookMag * ((1 - SHOT.backEnd) + SHOT.backEnd * slow) * dt;
+      }
+      vz *= (1 - SHOT.fwdDecay * dt);
+      x += vx * dt; z += vz * dt;
+      if (Math.abs(x) > LANE_HW + 0.02) { pts.push(new THREE.Vector3(x, 0.025, z)); break; }
     }
+    return pts;
+  }
+
+  // position the ball at the start spot and draw the predicted trajectory
+  function previewShot({ aimX, power, curve, spin }) {
+    const x = clamp(aimX, -LANE_HW + BALL_R, LANE_HW - BALL_R);
+    ballBody.velocity.set(0, 0, 0);
+    ballBody.angularVelocity.set(0, 0, 0);
+    ballBody.position.set(x, BALL_R, 0.15);
+    const pts = simulatePath(x, power, curve, spin);
     aimLine.geometry.setFromPoints(pts);
+    aimLine.visible = true;
+    if (aimTarget) {
+      const end = pts[pts.length - 1];
+      aimTarget.position.set(end.x, 0.02, end.z);
+      aimTarget.visible = true;
+    }
   }
 
   // launch! opts: { power 0..1, curve -1..1, spin 0..1 }
@@ -297,6 +344,7 @@ const Scene = (() => {
     rollTime = 0;
     settleTimer = 0;
     aimLine.visible = false;
+    if (aimTarget) aimTarget.visible = false;
   }
 
   // ---------- per-frame update ----------
@@ -363,18 +411,31 @@ const Scene = (() => {
   }
 
   function updateCamera(dt) {
-    // gently dolly toward the action while the ball travels, then ease back
-    let tz = camHome.z, lookZ = camLookHome.z;
-    if (rolling || ballBody.position.z < -0.5) {
-      const t = clamp(-ballBody.position.z / LANE_LEN, 0, 1);
-      tz = lerp(camHome.z, -3.0, t);
-      lookZ = lerp(camLookHome.z, -LANE_LEN + 1.5, t);
+    // Chase cam: while the ball travels, trail behind it and look ahead toward
+    // the pins; otherwise sit at the framing "home" pose. Always keeps the ball
+    // high in frame and shows the pin impact.
+    let posX, posZ, lookX, lookZ;
+    const active = rolling || ballBody.position.z < -0.4;
+    if (active) {
+      posX = ballBody.position.x * 0.4;
+      posZ = ballBody.position.z + CAM.trail;
+      lookX = ballBody.position.x * 0.5;
+      lookZ = ballBody.position.z - CAM.lookAhead;
+    } else {
+      posX = ballBody.position.x * 0.3;
+      posZ = camHome.z;
+      lookX = ballBody.position.x * 0.3;
+      lookZ = camLookHome.z;
     }
-    camPos.x += (lerp(0, ballBody.position.x * 0.25, 0.5) - camPos.x) * Math.min(1, dt * 3);
-    camPos.z += (tz - camPos.z) * Math.min(1, dt * 2.5);
-    camLook.z += (lookZ - camLook.z) * Math.min(1, dt * 2.5);
+    posZ = Math.max(posZ, -LANE_LEN + 2.2);          // don't dive into the pit
+    lookZ = Math.max(lookZ, -LANE_LEN - 1.0);
+    const k = Math.min(1, dt * CAM.ease);
+    camPos.x += (posX - camPos.x) * k;
+    camPos.z += (posZ - camPos.z) * k;
+    camLook.x += (lookX - camLook.x) * k;
+    camLook.z += (lookZ - camLook.z) * k;
     camera.position.set(camPos.x, camHome.y, camPos.z);
-    camera.lookAt(camLook.x, camLook.y, camLook.z);
+    camera.lookAt(camLook.x, camLookHome.y, camLook.z);
   }
 
   let last = 0;
@@ -452,6 +513,15 @@ const Scene = (() => {
       ballMesh.add(h);
     }
 
+    // predicted-entry marker (a small bright ring on the pin deck)
+    aimTarget = new THREE.Mesh(
+      new THREE.RingGeometry(0.06, 0.10, 18),
+      new THREE.MeshBasicMaterial({ color: 0x8fe1ff, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
+    );
+    aimTarget.rotation.x = -Math.PI / 2;
+    aimTarget.position.set(0, 0.02, Z_HEAD);
+    scene.add(aimTarget);
+
     setRack(null);
     placeBall(0);
 
@@ -461,8 +531,9 @@ const Scene = (() => {
   }
 
   return {
-    init, setRack, placeBall, setAim, roll,
+    init, setRack, placeBall, previewShot, roll,
     set onSettled(fn) { onSettled = fn; },
+    set onImpact(fn) { onImpact = fn; },
     get isRolling() { return rolling; },
     LANE_HW,
     _pinMat: null, _ballMat: null,

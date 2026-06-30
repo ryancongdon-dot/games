@@ -41,23 +41,31 @@ with distinct depth layers (sharp warm lane up front, hazy cool background) and
 **restrained lighting** — no heavy bloom. The 3D canvas is pixelated; the flat,
 high-contrast HUD sits crisply on top in the corners.
 
-The heart of it is a **four-beat shot**: slide your **aim**, then lock a moving bar
-for **POWER**, **CURVE** (which way & how much it hooks), and **SPIN** (rev rate,
-which amplifies the back-end hook). Then the ball rolls with real physics into a
-10-pin rack.
+The heart of it is a **deliberate, WYSIWYG shot**: you dial in **AIM** (where you
+stand), **POWER**, **CURVE** (which way & how much it hooks), and **SPIN** (rev rate,
+which amplifies the back-end hook) with sliders, and a **live blue line on the lane
+previews exactly where the ball will travel** — then you **THROW** and the ball rolls
+with real physics into a 10-pin rack. The preview is faithful because the lane uses
+low friction so the ball holds its forward speed (the same model the preview draws).
 
 **How to play**
-- `◀ ▶` move your start spot on the approach, then **LOCK AIM**.
-- Lock the moving bar three times: **POWER → CURVE → SPIN** (SPIN locks = throw).
-- Desktop: **arrow keys** to aim, **Space/Enter** to lock each bar.
+- Drag the **AIM / POWER / CURVE / SPIN** sliders to shape the shot (desktop:
+  **arrow keys** nudge aim; focus a slider and use its own arrows).
+- The **blue line + ring** show the predicted path and entry point — then **THROW**
+  (or **Space/Enter**). The camera follows the ball down the lane into the pins.
+- Note: **lower power hooks more** than high power (slower ball = more break) — a real
+  bowling skill dimension.
 - Full standard **10-frame scoring** (strikes, spares, 10th-frame bonus balls).
 - Beat **140** to win the **league night**; your week record & best save locally.
+- Sound is procedural (Web Audio) — a rolling rumble, a pin crash on impact, and a
+  strike/spare chime.
 
 **Tuning** — shot feel lives in the `SHOT` block at the top of
 [`games/bowling/scene3d.js`](games/bowling/scene3d.js) (`speedMin/Max`, `drift`,
-`hookMin/Max`, `backEnd`, `spinViz`) — bowling feel needs a few frames of playtesting
-to dial in. The pixel crunch is the `PIXEL` constant in the same file; meter speeds
-and the 140 win line live at the top of [`game.js`](games/bowling/game.js).
+`hookMin/Max`, `backEnd`, `spinViz`, `fwdDecay`) — bowling feel needs a few frames of
+playtesting to dial in, and the preview math mirrors these exactly. Camera framing is
+the `camHome`/`camLookHome`/`CAM` constants; the pixel crunch is `PIXEL` (same file);
+the 140 win line is at the top of [`game.js`](games/bowling/game.js).
 
 > **Roadmap toward the bigger game** (*Dave the Diver*-style story + side quests
 > around the alley — cooking pizza, fixing arcade machines — wrapped in a league
@@ -93,6 +101,7 @@ games/
     style.css              # flat, high-contrast corner HUD (crisp over pixelated 3D)
     game.js                # shot state machine (aim/power/curve/spin), 10-pin scoring, league
     scene3d.js             # WebGL 3D lane + cannon.js physics, pixelated render, SHOT tuning
+    audio.js               # procedural Web Audio SFX (roll / pin crash / strike)
     vendor/                # three.min.js + cannon.min.js (vendored, self-contained)
 ```
 

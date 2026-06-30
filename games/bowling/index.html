@@ -14,51 +14,46 @@
     <!-- crisp pixelated 3D lane -->
     <canvas id="game"></canvas>
 
-    <!-- top-left: frame / ball / league (flat HUD panel) -->
-    <div class="hud hud-tl">
+    <!-- TOP: frame/ball/league, scoresheet, score (all kept clear of the lane) -->
+    <div class="topbar">
       <div class="panel">
         <div id="frame-label" class="big">Frame 1</div>
         <div id="ball-label" class="sub">Ball 1</div>
         <div id="league-line" class="league">Week 1 · 0–0</div>
       </div>
-    </div>
-
-    <!-- top-right: running total -->
-    <div class="hud hud-tr">
+      <div id="scoresheet" class="scoresheet"></div>
       <div class="panel score">
         <div class="sub">SCORE</div>
         <div id="total" class="big">0</div>
       </div>
     </div>
 
-    <!-- bottom: scoresheet (10 frames) -->
-    <div id="scoresheet" class="scoresheet"></div>
-
-    <!-- shot readout chips -->
-    <div id="shot-readout" class="readout hidden">
-      <span class="chip">PWR <b id="ro-power">0</b></span>
-      <span class="chip">CRV <b id="ro-curve">0</b></span>
-      <span class="chip">SPN <b id="ro-spin">0</b></span>
-    </div>
-
-    <!-- the moving shot meter -->
-    <div id="meter-wrap" class="meter hidden">
-      <div id="meter-label" class="meter-label">POWER</div>
-      <div class="meter-track">
-        <div id="meter-center" class="meter-center hidden"></div>
-        <div id="meter-fill" class="meter-fill"></div>
-        <div id="meter-tick" class="meter-tick"></div>
+    <!-- BOTTOM: shot setup (sliders you control) + THROW -->
+    <div id="phase-hint" class="hint">Press PLAY</div>
+    <div id="setup" class="setup hidden">
+      <div class="sliders">
+        <div class="srow">
+          <span class="sname">AIM</span>
+          <input id="s-aim" class="slider" type="range" min="-100" max="100" step="1" value="0" aria-label="Aim" />
+          <span id="v-aim" class="sval">center</span>
+        </div>
+        <div class="srow">
+          <span class="sname">POWER</span>
+          <input id="s-power" class="slider" type="range" min="0" max="100" step="1" value="70" aria-label="Power" />
+          <span id="v-power" class="sval">70</span>
+        </div>
+        <div class="srow">
+          <span class="sname">CURVE</span>
+          <input id="s-curve" class="slider bidir" type="range" min="-100" max="100" step="1" value="0" aria-label="Curve" />
+          <span id="v-curve" class="sval">straight</span>
+        </div>
+        <div class="srow">
+          <span class="sname">SPIN</span>
+          <input id="s-spin" class="slider" type="range" min="0" max="100" step="1" value="40" aria-label="Spin" />
+          <span id="v-spin" class="sval">40</span>
+        </div>
       </div>
-    </div>
-
-    <!-- phase hint + controls -->
-    <div class="controls">
-      <div id="phase-hint" class="hint">Press PLAY</div>
-      <div class="ctl-row">
-        <button id="btn-left" class="dbtn" aria-label="Move left">◀</button>
-        <button id="btn-action" class="action">PLAY</button>
-        <button id="btn-right" class="dbtn" aria-label="Move right">▶</button>
-      </div>
+      <button id="btn-throw" class="throw">THROW</button>
     </div>
 
     <div id="toast" class="toast hidden"></div>
@@ -67,12 +62,12 @@
     <div id="overlay-title" class="overlay">
       <div class="card">
         <h1>PIN<span>KINGS</span></h1>
-        <p>League night at the alley. Set your <b>aim</b>, then lock
-           <b>POWER</b>, <b>CURVE</b> and <b>SPIN</b> — and bring the hook home. 🎳</p>
+        <p>League night at the alley. Dial in your <b>aim</b>, <b>power</b>,
+           <b>curve</b> and <b>spin</b> — the blue line shows your shot — then bring the hook home. 🎳</p>
         <ul class="how">
-          <li>◀ ▶ move your start spot, then <b>LOCK</b> each bar</li>
-          <li>CURVE sets the hook side &amp; amount; SPIN amplifies the back-end</li>
-          <li>10 frames · beat <b>140</b> to win the league night</li>
+          <li>Drag the sliders (or arrow keys for aim) to shape the shot</li>
+          <li>The <b>blue line</b> previews exactly where the ball will travel</li>
+          <li><b>THROW</b> (or Space) to roll · 10 frames · beat <b>140</b> to win the night</li>
         </ul>
         <div id="title-league" class="title-league"></div>
         <button id="btn-play" class="primary">PLAY</button>
@@ -91,6 +86,7 @@
 
   <script src="vendor/three.min.js"></script>
   <script src="vendor/cannon.min.js"></script>
+  <script src="audio.js"></script>
   <script src="scene3d.js"></script>
   <script src="game.js"></script>
 </body>
