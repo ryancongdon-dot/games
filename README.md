@@ -38,8 +38,8 @@ A **real 3D** league-bowling game (WebGL + cannon.js physics) wrapped in a cozy
 **alley hub** (*Dave the Diver*-style framing). `index.html` is the **hub**: a home
 screen for *Strike Valley Lanes* with a living **league standings board**, a season
 schedule (play 6 rival teams once each — beat their score to win the night), money you
-earn, and clickable spots (the Lanes, the Arcade → Claw Craze, a **Pro Shop**, plus a
-Pizza Counter coming soon). Bowling a league night launches the game (`lanes.html`); the
+earn, and clickable spots (the Lanes, the Arcade → Claw Craze, a **Pro Shop**, and the
+**Pizza Counter** side job). Bowling a league night launches the game (`lanes.html`); the
 result records back into the season and advances the week. Top of the table at season's
 end = **league champions**. (Open `lanes.html` directly for a no-stakes practice game.)
 
@@ -48,6 +48,11 @@ equip for matches. A ball's **weight (6–16 lb)** sets the physics ball mass �
 more **pin carry** (momentum through the rack); lighter deflects more. Its **hook** stat
 scales how far the curve arcs. On the approach the ball is held to the lane (it can't
 bounce on release) and switches to a real mass-driven body just before the pins.
+
+The **Pizza Counter** (`pizza.html`) is a side job: build each customer's order from the
+topping palette, bake into the golden zone with a timing meter, and serve before their
+patience runs out. Perfect pies build a combo for bigger tips; the shift's earnings go
+straight into your league money for the Pro Shop.
 
 The bowling itself has a deliberately **clean, "not jumbled" look** inspired by *Dave the Diver*: the scene renders to a
 low-resolution buffer and is upscaled **nearest-neighbour** for crisp chunky pixels,
@@ -119,6 +124,7 @@ games/
     hub.css, hub.js        # hub styling + logic (matchup, standings, spots)
     league.js              # season model + Pro Shop balls, shared everywhere
     proshop.html, proshop.js # buy & equip bowling balls (weight = pin carry, hook)
+    pizza.html, pizza.js, pizza.css # Pizza Counter side job (earn league money)
     lanes.html             # the bowling game shell
     style.css              # flat, high-contrast corner HUD (crisp over pixelated 3D)
     game.js                # shot state machine (aim/power/curve/spin), 10-pin scoring

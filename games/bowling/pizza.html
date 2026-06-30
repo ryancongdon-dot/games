@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c1020" />
+  <title>Pizza Counter — Strike Valley Lanes 🍕</title>
+  <link rel="stylesheet" href="hub.css" />
+  <link rel="stylesheet" href="pizza.css" />
+</head>
+<body>
+  <div id="hub">
+    <header class="marquee compact">
+      <h1>PIZZA<span>COUNTER</span></h1>
+    </header>
+
+    <div class="chips">
+      <span class="chip">🧾 <b id="c-order">Order 1 / 8</b></span>
+      <span class="chip">💰 <b id="c-earned">$0</b></span>
+      <span class="chip">🔥 <b id="c-combo">x0</b></span>
+    </div>
+
+    <!-- the order ticket -->
+    <section id="ticket" class="ticket">
+      <div class="cust" id="cust">🙂</div>
+      <div class="order-info">
+        <div class="order-want">Wants <span id="order-toppings"></span></div>
+        <div class="patience"><div id="patience-fill" class="patience-fill"></div></div>
+      </div>
+    </section>
+
+    <!-- the pizza you're building -->
+    <section class="kitchen">
+      <div id="pizza" class="pizza"><div class="pie"></div><div id="pizza-tops" class="pizza-tops"></div><div id="bake-glow" class="bake-glow"></div></div>
+    </section>
+
+    <!-- topping buttons -->
+    <section id="toppings" class="toppings"></section>
+
+    <!-- action area: BAKE, or the doneness meter -->
+    <section class="action-area">
+      <div id="bakebar" class="bakebar hidden">
+        <div class="bake-zones"><span class="zone-good"></span></div>
+        <div id="bake-needle" class="bake-needle"></div>
+      </div>
+      <button id="btn-main" class="bowl">BAKE 🔥</button>
+      <div id="feedback" class="feedback"></div>
+    </section>
+
+    <footer class="hub-foot"><a href="index.html">← Back to the Alley</a></footer>
+
+    <!-- shift summary -->
+    <div id="overlay" class="overlay hidden">
+      <div class="card">
+        <h2 id="sum-title">Shift Over</h2>
+        <div id="sum-body"></div>
+        <button id="btn-again" class="primary">Work Another Shift</button>
+        <button id="btn-hub" class="primary ghost">Back to the Alley</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="league.js"></script>
+  <script src="pizza.js"></script>
+</body>
+</html>

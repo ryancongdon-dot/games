@@ -67,7 +67,6 @@
   function boot() {
     // "The Lanes" tile launches the same league night as the matchup button
     $('spot-lanes').addEventListener('click', (e) => { e.preventDefault(); if (!L.done) { L.beginNight(); window.location.href = 'lanes.html'; } else toast('Season\'s done — start a new one!'); });
-    $('spot-pizza').addEventListener('click', (e) => { e.preventDefault(); toast('🍕 Pizza Counter — a side job we\'ll build next!'); });
     render();
   }
 

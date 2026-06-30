@@ -38,7 +38,7 @@ const Scene = (() => {
     bulge: 0.62,                     // max lateral arc (m) per unit CURVE at full SPIN
     spinBase: 0.30,                  // arc present at SPIN 0 (fraction of bulge)
     humpSkew: 1.18,                  // >1 pushes the arc's apex slightly down-lane
-    fwdDecay: 0.04,                  // mild forward slow-down per second
+    fwdDecay: 0.02,                  // mild forward slow-down per second (keep carry)
     steerStopZ: 0.7,                 // stop steering this far before the head pin
     spinViz: 9,                      // visual ball spin (rad/s) from curve+spin
   };
@@ -199,10 +199,10 @@ const Scene = (() => {
     const pinMat = new CANNON.Material('pin');
     // low lane↔ball friction keeps forward speed ~steady; low pin friction +
     // springy ball↔pin / pin↔pin restitution makes struck pins fly & chain.
-    world.addContactMaterial(new CANNON.ContactMaterial(laneMat, ballMat, { friction: 0.04, restitution: 0.02 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(laneMat, pinMat, { friction: 0.18, restitution: 0.08 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(ballMat, pinMat, { friction: 0.16, restitution: 0.5 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(pinMat, pinMat, { friction: 0.2, restitution: 0.45 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(laneMat, ballMat, { friction: 0.04, restitution: 0.0 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(laneMat, pinMat, { friction: 0.1, restitution: 0.08 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(ballMat, pinMat, { friction: 0.1, restitution: 0.55 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(pinMat, pinMat, { friction: 0.15, restitution: 0.55 }));
 
     // lane floor (top at y=0)
     const lane = new CANNON.Body({ mass: 0, material: laneMat,
@@ -248,7 +248,7 @@ const Scene = (() => {
 
   // ---------- pins ----------
   function makePinBody(x, z) {
-    const b = new CANNON.Body({ mass: 1.5, material: Scene._pinMat,
+    const b = new CANNON.Body({ mass: 1.35, material: Scene._pinMat,
       shape: new CANNON.Box(new CANNON.Vec3(PIN_HW, PIN_HH, PIN_HW)) });
     b.__isPin = true;
     b.position.set(x, PIN_HH, z);
