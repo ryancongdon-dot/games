@@ -34,8 +34,16 @@ reach `GRASP`, heap size `PILE_TARGET`, and the `BLOOM` settings) live in
 [`scene3d.js`](games/claw-machine/scene3d.js).
 
 ### 🎳 Pin Kings — `games/bowling/`
-A **real 3D** league-bowling game (WebGL + cannon.js physics) with a deliberately
-**clean, "not jumbled" look** inspired by *Dave the Diver*: the scene renders to a
+A **real 3D** league-bowling game (WebGL + cannon.js physics) wrapped in a cozy
+**alley hub** (*Dave the Diver*-style framing). `index.html` is the **hub**: a home
+screen for *Strike Valley Lanes* with a living **league standings board**, a season
+schedule (play 6 rival teams once each — beat their score to win the night), money you
+earn, and clickable spots (the Lanes, the Arcade → Claw Craze, plus a Pizza Counter and
+Pro Shop coming soon). Bowling a league night launches the game (`lanes.html`); the
+result records back into the season and advances the week. Top of the table at season's
+end = **league champions**. (Open `lanes.html` directly for a no-stakes practice game.)
+
+The bowling itself has a deliberately **clean, "not jumbled" look** inspired by *Dave the Diver*: the scene renders to a
 low-resolution buffer and is upscaled **nearest-neighbour** for crisp chunky pixels,
 with distinct depth layers (sharp warm lane up front, hazy cool background) and
 **restrained lighting** — no heavy bloom. The 3D canvas is pixelated; the flat,
@@ -101,9 +109,12 @@ games/
     audio.js               # generated chiptune music + SFX (Web Audio)
     vendor/                # three.min.js (r0.149 UMD) + cannon.min.js (vendored)
   bowling/
-    index.html             # game shell
+    index.html             # the ALLEY HUB (home screen / entry point)
+    hub.css, hub.js        # hub styling + logic (matchup, standings, spots)
+    league.js              # season model shared by the hub and the lanes
+    lanes.html             # the bowling game shell
     style.css              # flat, high-contrast corner HUD (crisp over pixelated 3D)
-    game.js                # shot state machine (aim/power/curve/spin), 10-pin scoring, league
+    game.js                # shot state machine (aim/power/curve/spin), 10-pin scoring
     scene3d.js             # WebGL 3D lane + cannon.js physics, pixelated render, SHOT tuning
     audio.js               # procedural Web Audio SFX (roll / pin crash / strike)
     vendor/                # three.min.js + cannon.min.js (vendored, self-contained)

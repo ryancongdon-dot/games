@@ -2,92 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#141a30" />
-  <title>Pin Kings 🎳</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c1020" />
+  <title>Strike Valley Lanes 🎳</title>
+  <link rel="stylesheet" href="hub.css" />
 </head>
 <body>
-  <div id="app">
-    <!-- crisp pixelated 3D lane -->
-    <canvas id="game"></canvas>
+  <div id="hub">
+    <header class="marquee">
+      <h1>STRIKE VALLEY<span>LANES</span></h1>
+      <p class="tag">League Night · est. 1986</p>
+    </header>
 
-    <!-- TOP: frame/ball/league, scoresheet, score (all kept clear of the lane) -->
-    <div class="topbar">
-      <div class="panel">
-        <div id="frame-label" class="big">Frame 1</div>
-        <div id="ball-label" class="sub">Ball 1</div>
-        <div id="league-line" class="league">Week 1 · 0–0</div>
-      </div>
-      <div id="scoresheet" class="scoresheet"></div>
-      <div class="panel score">
-        <div class="sub">SCORE</div>
-        <div id="total" class="big">0</div>
-      </div>
+    <div class="chips">
+      <span class="chip">📅 <b id="c-week">Week 1 / 6</b></span>
+      <span class="chip">🏆 <b id="c-rank">#1</b></span>
+      <span class="chip">💵 <b id="c-money">$0</b></span>
     </div>
 
-    <!-- BOTTOM: shot setup (sliders you control) + THROW -->
-    <div id="phase-hint" class="hint">Press PLAY</div>
-    <div id="setup" class="setup hidden">
-      <div class="sliders">
-        <div class="srow">
-          <span class="sname">AIM</span>
-          <input id="s-aim" class="slider" type="range" min="-100" max="100" step="1" value="0" aria-label="Aim" />
-          <span id="v-aim" class="sval">center</span>
-        </div>
-        <div class="srow">
-          <span class="sname">POWER</span>
-          <input id="s-power" class="slider" type="range" min="0" max="100" step="1" value="70" aria-label="Power" />
-          <span id="v-power" class="sval">70</span>
-        </div>
-        <div class="srow">
-          <span class="sname">CURVE</span>
-          <input id="s-curve" class="slider bidir" type="range" min="-100" max="100" step="1" value="0" aria-label="Curve" />
-          <span id="v-curve" class="sval">straight</span>
-        </div>
-        <div class="srow">
-          <span class="sname">SPIN</span>
-          <input id="s-spin" class="slider" type="range" min="0" max="100" step="1" value="40" aria-label="Spin" />
-          <span id="v-spin" class="sval">40</span>
-        </div>
-      </div>
-      <button id="btn-throw" class="throw">THROW</button>
-    </div>
+    <!-- main matchup / season CTA (filled by hub.js) -->
+    <section id="matchup" class="matchup"></section>
 
+    <!-- the alley: clickable spots -->
+    <section class="spots">
+      <a class="spot lanes" id="spot-lanes" href="lanes.html">
+        <div class="ico">🎳</div><div class="lbl">The Lanes</div><div class="sub">League night</div>
+      </a>
+      <a class="spot arcade" href="../claw-machine/index.html">
+        <div class="ico">🕹️</div><div class="lbl">Arcade</div><div class="sub">Play Claw Craze</div>
+      </a>
+      <a class="spot pizza" id="spot-pizza" href="#">
+        <div class="ico">🍕</div><div class="lbl">Pizza Counter</div><div class="sub">Side job · soon</div>
+      </a>
+      <a class="spot shop" id="spot-shop" href="#">
+        <div class="ico">🛠️</div><div class="lbl">Pro Shop</div><div class="sub">Upgrades · soon</div>
+      </a>
+    </section>
+
+    <!-- standings board -->
+    <section class="board">
+      <h2>League Standings</h2>
+      <div class="thead"><span class="t-pos">#</span><span class="t-name">Team</span><span class="t-rec">W–L</span><span class="t-pf">PF</span></div>
+      <div id="standings" class="standings"></div>
+    </section>
+
+    <footer class="hub-foot">Pin Kings — a cozy league-bowling game. <a href="../../index.html">← Arcade</a></footer>
     <div id="toast" class="toast hidden"></div>
-
-    <!-- title overlay -->
-    <div id="overlay-title" class="overlay">
-      <div class="card">
-        <h1>PIN<span>KINGS</span></h1>
-        <p>League night at the alley. Dial in your <b>aim</b>, <b>power</b>,
-           <b>curve</b> and <b>spin</b> — the blue line shows your shot — then bring the hook home. 🎳</p>
-        <ul class="how">
-          <li>Drag the sliders (or arrow keys for aim) to shape the shot</li>
-          <li>The <b>blue line</b> previews exactly where the ball will travel</li>
-          <li><b>THROW</b> (or Space) to roll · 10 frames · beat <b>140</b> to win the night</li>
-        </ul>
-        <div id="title-league" class="title-league"></div>
-        <button id="btn-play" class="primary">PLAY</button>
-      </div>
-    </div>
-
-    <!-- results overlay -->
-    <div id="overlay-results" class="overlay hidden">
-      <div class="card">
-        <h2>League Night</h2>
-        <div id="result-body"></div>
-        <button id="btn-again" class="primary">Next Game</button>
-      </div>
-    </div>
   </div>
 
-  <script src="vendor/three.min.js"></script>
-  <script src="vendor/cannon.min.js"></script>
-  <script src="audio.js"></script>
-  <script src="scene3d.js"></script>
-  <script src="game.js"></script>
+  <script src="league.js"></script>
+  <script src="hub.js"></script>
 </body>
 </html>

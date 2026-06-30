@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#141a30" />
+  <title>Pin Kings — Lanes 🎳</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- crisp pixelated 3D lane -->
+    <canvas id="game"></canvas>
+
+    <!-- TOP: frame/ball/matchup, scoresheet, score -->
+    <div class="topbar">
+      <div class="panel">
+        <div id="frame-label" class="big">Frame 1</div>
+        <div id="ball-label" class="sub">Ball 1</div>
+        <div id="league-line" class="league">Practice</div>
+      </div>
+      <div id="scoresheet" class="scoresheet"></div>
+      <div class="panel score">
+        <div class="sub">SCORE</div>
+        <div id="total" class="big">0</div>
+      </div>
+    </div>
+
+    <!-- BOTTOM: shot setup -->
+    <div id="phase-hint" class="hint">Press PLAY</div>
+    <div id="setup" class="setup hidden">
+      <div class="sliders">
+        <div class="srow">
+          <span class="sname">AIM</span>
+          <input id="s-aim" class="slider" type="range" min="-100" max="100" step="1" value="0" aria-label="Aim" />
+          <span id="v-aim" class="sval">center</span>
+        </div>
+        <div class="srow">
+          <span class="sname">POWER</span>
+          <input id="s-power" class="slider" type="range" min="0" max="100" step="1" value="70" aria-label="Power" />
+          <span id="v-power" class="sval">70</span>
+        </div>
+        <div class="srow">
+          <span class="sname">CURVE</span>
+          <input id="s-curve" class="slider bidir" type="range" min="-100" max="100" step="1" value="0" aria-label="Curve" />
+          <span id="v-curve" class="sval">straight</span>
+        </div>
+        <div class="srow">
+          <span class="sname">SPIN</span>
+          <input id="s-spin" class="slider" type="range" min="0" max="100" step="1" value="40" aria-label="Spin" />
+          <span id="v-spin" class="sval">40</span>
+        </div>
+      </div>
+      <button id="btn-throw" class="throw">THROW</button>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- pre-match / title overlay -->
+    <div id="overlay-title" class="overlay">
+      <div class="card">
+        <h1>PIN<span>KINGS</span></h1>
+        <p>Dial in your <b>aim</b>, <b>power</b>, <b>curve</b> and <b>spin</b> —
+           the blue line shows your shot — then bring the hook home. 🎳</p>
+        <div id="title-league" class="title-league"></div>
+        <button id="btn-play" class="primary">PLAY</button>
+        <div><a id="link-hub" class="link" href="index.html">← Back to the Alley</a></div>
+      </div>
+    </div>
+
+    <!-- results overlay -->
+    <div id="overlay-results" class="overlay hidden">
+      <div class="card">
+        <h2 id="result-title">League Night</h2>
+        <div id="result-body"></div>
+        <button id="btn-again" class="primary">Play Again</button>
+        <button id="btn-hub" class="primary ghost">Back to the Alley</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/cannon.min.js"></script>
+  <script src="league.js"></script>
+  <script src="audio.js"></script>
+  <script src="scene3d.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

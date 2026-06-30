@@ -10,8 +10,8 @@
 
   // ---------- tuning ----------
   const FRAMES = 10;
-  const SAVE_KEY = 'pinkings_v1';
   const AIM_STEP = 0.04;        // keyboard aim nudge per press
+  const L = (typeof window !== 'undefined' && window.League) ? window.League : null;
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const $ = (id) => document.getElementById(id);
@@ -27,7 +27,6 @@
     spin: 0.4,          // 0..1
     standing: null,     // 10 booleans, true = pin still up (null = fresh rack)
     frames: [],         // scoring: each = { rolls: [..], score: null }
-    league: loadLeague(),
   };
 
   // ---------- DOM refs ----------
@@ -47,20 +46,11 @@
       toast: $('toast'),
       title: $('overlay-title'),
       results: $('overlay-results'),
+      resultTitle: $('result-title'),
       resultBody: $('result-body'),
+      btnAgain: $('btn-again'),
+      btnHub: $('btn-hub'),
     };
-  }
-
-  // ---------- league (light meta layer; the season wrapper) ----------
-  function loadLeague() {
-    try {
-      const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-      if (s && typeof s.week === 'number') return s;
-    } catch (e) { /* ignore */ }
-    return { week: 1, wins: 0, losses: 0, best: 0 };
-  }
-  function saveLeague() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(G.league)); } catch (e) { /* ignore */ }
   }
 
   // ---------- scoring ----------
@@ -209,7 +199,8 @@
   function updateLabels() {
     el.frameLabel.textContent = 'Frame ' + (G.frame + 1);
     el.ballLabel.textContent = 'Ball ' + G.ball;
-    el.leagueLine.textContent = `Week ${G.league.week} · ${G.league.wins}–${G.league.losses}`;
+    const n = L && L.activeNight();
+    el.leagueLine.textContent = n ? `Wk${n.week} vs ${n.opp} · beat ${n.oppScore}` : 'Practice';
   }
 
   function throwBall() {
@@ -283,18 +274,24 @@
     G.phase = 'gameover';
     el.setup.classList.add('hidden');
     const total = gameTotal();
-    const won = total >= 140;
-    if (won) G.league.wins++; else G.league.losses++;
-    if (total > (G.league.best || 0)) G.league.best = total;
-    G.league.week++;
-    saveLeague();
-    updateLabels();
 
-    el.resultBody.innerHTML =
-      `<div class="big-score">${total}</div>` +
-      `<p>${won ? 'You won the league night! 🏆' : 'Tough night — the team dropped this one.'}</p>` +
-      `<p class="fine">Personal best: ${G.league.best} · Record ${G.league.wins}–${G.league.losses}` +
-      ` · Next: Week ${G.league.week}</p>`;
+    // a league night? record it against this week's opponent and advance the season
+    if (L && L.activeNight()) {
+      const r = L.recordNight(total);
+      el.resultTitle.textContent = r.win ? 'WIN! 🏆' : 'Tough night';
+      el.resultBody.innerHTML =
+        `<div class="big-score">${r.you} <span class="vs">vs</span> ${r.oppScore}</div>` +
+        `<p>${r.win ? 'You beat the ' : 'Lost to the '}<b>${r.opp}</b>.</p>` +
+        `<p class="fine">${r.done ? `Season over — you finished #${r.rank}.` :
+          `League standing: #${r.rank} · 💵 $${r.money}`}</p>`;
+      // after a league night you head back to the alley (the season advances there)
+      el.btnAgain.classList.add('hidden');
+      el.btnHub.textContent = r.done ? 'See Final Standings' : 'Back to the Alley';
+    } else {
+      el.resultTitle.textContent = 'Practice Game';
+      el.resultBody.innerHTML = `<div class="big-score">${total}</div><p>Nice rolling.</p>`;
+      el.btnAgain.classList.remove('hidden');
+    }
     el.results.classList.remove('hidden');
     renderSheet();
   }
@@ -312,7 +309,8 @@
   // ---------- input ----------
   function bindInput() {
     $('btn-play').addEventListener('click', newGame);
-    $('btn-again').addEventListener('click', newGame);
+    el.btnAgain.addEventListener('click', newGame);
+    if (el.btnHub) el.btnHub.addEventListener('click', () => { window.location.href = 'index.html'; });
     el.btnThrow.addEventListener('click', throwBall);
 
     const sliderMap = [
@@ -333,7 +331,10 @@
       const typing = document.activeElement && document.activeElement.tagName === 'INPUT';
       if (e.key === 'Enter' || e.key === ' ') {
         if (G.phase === 'title') newGame();
-        else if (G.phase === 'gameover') newGame();
+        else if (G.phase === 'gameover') {
+          if (el.btnAgain.classList.contains('hidden')) window.location.href = 'index.html';
+          else newGame();
+        }
         else if (G.phase === 'setup') throwBall();
         e.preventDefault();
         return;
@@ -359,9 +360,10 @@
     renderSheet();
     updateLabels();
     syncSliders();
-    $('title-league').textContent =
-      `League · Week ${G.league.week} · Record ${G.league.wins}–${G.league.losses}` +
-      (G.league.best ? ` · Best ${G.league.best}` : '');
+    const n = L && L.activeNight();
+    $('title-league').textContent = n
+      ? `Week ${n.week} — ${L.player} vs ${n.opp} · beat ${n.oppScore} to win the night`
+      : 'Practice game — roll for a high score';
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

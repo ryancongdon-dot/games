@@ -157,7 +157,16 @@ body {
   background: linear-gradient(180deg, #ffe07a, #ffb43f); box-shadow: 0 6px 0 #c97f1e;
 }
 .primary:active { transform: translateY(3px); box-shadow: 0 3px 0 #c97f1e; }
-.big-score { font-size: 64px; font-weight: 900; color: #8fe1ff; line-height: 1; margin: 6px 0; }
+.primary.ghost {
+  margin-top: 10px; color: #cfe1ff;
+  background: rgba(255, 255, 255, 0.06); box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+}
+.primary.ghost:active { box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4); }
+.link { display: inline-block; margin-top: 14px; color: #9fb4dd; font-size: 14px; font-weight: 700; text-decoration: none; }
+.link:hover { color: #8fe1ff; }
+.big-score { font-size: 60px; font-weight: 900; color: #8fe1ff; line-height: 1; margin: 6px 0; }
+.big-score .vs { font-size: 26px; color: #9fb4dd; font-weight: 700; }
 
 .hidden { display: none !important; }
 
