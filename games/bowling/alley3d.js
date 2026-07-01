@@ -135,6 +135,18 @@ const STATIONS = [
 const npcZ = -2.2;
 const npcs = [];
 let player = null;
+let coin = null;             // spinning coin over the pro shop (Starter Kit prop)
+
+function loadProp(file, x, y, z, scale) {
+  loader.load('assets/props/' + file + '.glb', (g) => {
+    const root = g.scene;
+    root.scale.setScalar(scale || 1);
+    root.position.set(x, y, z);
+    root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    scene.add(root);
+    if (file === 'coin') coin = root;
+  }, undefined, () => {});
+}
 
 async function loadCast() {
   player = await loadChar('character-male-a', 0, 3, Math.PI);
@@ -145,6 +157,9 @@ async function loadCast() {
     setAction(ch, ch.actions['idle'] ? 'idle' : 'static', 0);
     npcs.push({ station: s, char: ch, root: ch.root });
   }
+  // props from the Starter Kit (MIT): coin over the pro shop; champion flag
+  loadProp('coin', 4.5, 2.4, -4.2, 1.2);
+  if (L && L.done && L.rank() === 1) loadProp('flag', 9.9, 0, -5.2, 1.4);
 }
 
 // ---------- input ----------
@@ -217,6 +232,7 @@ function animate() {
   }
   for (const n of npcs) if (n.char && n.char.mixer) n.char.mixer.update(dt);
   if (player && player.mixer) player.mixer.update(dt);
+  if (coin) { coin.rotation.y += dt * 2.2; coin.position.y = 2.4 + Math.sin(clock.elapsedTime * 2) * 0.08; }
   renderer.render(scene, camera);
 }
 
