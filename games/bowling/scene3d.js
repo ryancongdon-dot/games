@@ -207,7 +207,7 @@ const Scene = (() => {
     world.addContactMaterial(new CANNON.ContactMaterial(laneMat, pinMat, { friction: 0.08, restitution: 0.08 }));
     // low ball↔pin restitution = the ball PLOWS through (keeps momentum) instead
     // of rebounding; the big mass ratio (heavy ball vs light pin) sends pins flying.
-    world.addContactMaterial(new CANNON.ContactMaterial(ballMat, pinMat, { friction: 0.1, restitution: 0.2 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(ballMat, pinMat, { friction: 0.04, restitution: 0.15 }));
     world.addContactMaterial(new CANNON.ContactMaterial(pinMat, pinMat, { friction: 0.12, restitution: 0.5 }));
 
     // lane floor (top at y=0)
@@ -254,7 +254,7 @@ const Scene = (() => {
 
   // ---------- pins ----------
   function makePinBody(x, z) {
-    const b = new CANNON.Body({ mass: 0.7, material: Scene._pinMat,   // light pins fly
+    const b = new CANNON.Body({ mass: 0.5, material: Scene._pinMat,   // light pins fly
       shape: new CANNON.Box(new CANNON.Vec3(PIN_HW, PIN_HH, PIN_HW)) });
     b.__isPin = true;
     b.position.set(x, PIN_HH, z);
@@ -360,7 +360,7 @@ const Scene = (() => {
     const lb = clamp(opts.weight != null ? opts.weight : 12, 6, 16);
     // lb -> kg, scaled up so even the house ball SMASHES through the rack while
     // heavier balls still carry noticeably more (big mass ratio vs light pins).
-    ballBody.mass = lb * 0.4536 * 1.6;
+    ballBody.mass = lb * 0.4536 * 2.6;
     if (ballBody.type === CANNON.Body.DYNAMIC) ballBody.updateMassProperties();
     hookScale = (opts.hook != null) ? opts.hook : 1;
     if (opts.color != null && ballMesh) ballMesh.material.color.setHex(opts.color);
@@ -388,7 +388,10 @@ const Scene = (() => {
     ballBody.updateMassProperties();
     ballBody.position.y = BALL_R;
     ballBody.velocity.set(dxdp * dpdt, 0, -speed);
-    ballBody.angularVelocity.set(speed / BALL_R, -Math.sign(curve) * spin * SHOT.spinViz, 0);
+    // NOTE: forward roll about X must be NEGATIVE for travel in -Z. With the wrong
+    // sign the ball slips against the lane once it turns dynamic and friction kills
+    // its speed right at the pins — the "slows down for no reason" bug.
+    ballBody.angularVelocity.set(-speed / BALL_R, -Math.sign(curve) * spin * SHOT.spinViz, 0);
     if (ballBody.wakeUp) ballBody.wakeUp();
 
     // wake every pin so the whole rack reacts (no sleeping pins shrugging off hits)
@@ -429,10 +432,12 @@ const Scene = (() => {
       }
 
       // once steering ends, hand back to a dynamic body so the strike is a real,
-      // mass-driven collision (heavier ball = more pin carry).
+      // mass-driven collision (heavier ball = more pin carry). Re-assert full
+      // forward speed so the transition can't shave any velocity.
       if (!steerActive && b.type === CANNON.Body.KINEMATIC) {
         b.type = CANNON.Body.DYNAMIC;
         b.updateMassProperties();
+        b.velocity.z = -curSpeed; b.velocity.y = 0;
         if (b.wakeUp) b.wakeUp();
       }
     }
