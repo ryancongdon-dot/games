@@ -75,6 +75,14 @@ bench, the pro shop, or the standings board, and you press the action button to 
 job, or talk. Characters are drawn procedurally in `sprites.js` (swap for real sprite sheets
 later behind the same draw calls). Story beats + dialogue (with drawn face portraits) play here too.
 
+**Walkable alley in 3D (beta)** — `alley3d.html` is the real-graphics version: an actual 3D
+room rendered with Three.js (ES-module build), where your character and the NPCs are
+**Kenney's CC0 "Mini Characters"** — rigged, low-poly 3D models with **walk / idle animations**
+that play as you move (arrow keys / WASD / on-screen pad / tap-to-walk). Walk up to Gus, Rosa,
+Mac, Sal or the standings board and press the action button. Loads the animated GLBs via a
+vendored `GLTFLoader` (ES modules, so this page needs to run over a local server, not `file://`).
+Character art © [Kenney](https://kenney.nl) — CC0 (see `assets/characters/LICENSE-kenney.txt`).
+
 The bowling itself has a deliberately **clean, "not jumbled" look** inspired by *Dave the Diver*: the scene renders to a
 low-resolution buffer and is upscaled **nearest-neighbour** for crisp chunky pixels,
 with distinct depth layers (sharp warm lane up front, hazy cool background) and
