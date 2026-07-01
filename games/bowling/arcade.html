@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c1020" />
+  <title>Repair Bay — Strike Valley Lanes 🔧</title>
+  <link rel="stylesheet" href="hub.css" />
+  <link rel="stylesheet" href="arcade.css" />
+</head>
+<body>
+  <div id="hub" class="repair-page">
+    <header class="marquee compact"><h1>REPAIR<span>BAY</span></h1></header>
+
+    <div class="chips">
+      <span class="chip">💰 <b id="c-earned">$0</b></span>
+      <span class="chip">🔧 <b id="c-fixed">0</b></span>
+      <span class="chip">🔥 <b id="c-combo">x0</b></span>
+      <span class="chip clock">⏰ <b id="c-clock">1:15</b></span>
+    </div>
+
+    <div class="fault" id="fault">⚡ Diagnosing…</div>
+
+    <section class="repair-scene">
+      <div class="cabinet" id="cabinet">
+        <div class="cab-screen" id="cab-screen">⚡</div>
+        <div class="cab-panel"></div>
+        <div class="cab-legs"></div>
+      </div>
+
+      <div class="wire-panel" id="wire-panel">
+        <svg id="wire-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        <div id="ends"></div>
+        <div id="spark" class="spark hidden">⚡</div>
+      </div>
+    </section>
+
+    <div id="hint" class="repair-hint">Connect each wire to the matching colour on the other side.</div>
+
+    <footer class="hub-foot"><a href="index.html">← Back to the Alley</a></footer>
+
+    <div id="overlay" class="overlay hidden">
+      <div class="card">
+        <h2 id="sum-title">Shift Over</h2>
+        <div id="sum-body"></div>
+        <button id="btn-again" class="primary">Another Shift</button>
+        <button id="btn-hub" class="primary ghost">Back to the Alley</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="league.js"></script>
+  <script src="arcade.js"></script>
+</body>
+</html>

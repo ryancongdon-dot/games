@@ -85,6 +85,7 @@ body {
 .spot.arcade { background: radial-gradient(circle at 50% 30%, #6d2350, #2a0f23); }
 .spot.shop { background: radial-gradient(circle at 50% 30%, #4a3a1c, #221a0b); }
 .spot.pizza { background: radial-gradient(circle at 50% 30%, #6e2f1c, #2a120b); }
+.spot.repair { background: radial-gradient(circle at 50% 30%, #1c4a48, #0b2422); }
 
 /* ---- standings board ---- */
 .board {

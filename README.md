@@ -57,6 +57,11 @@ walk out — juggling the rush as more arrive. Perfect, speedy pies build a comb
 tips; you keep a small **cut (25%)** of the night's sales as pocket money. Winning **league
 nights** ($80/win) is the real bankroll — pizza is a way to mix it up between matches.
 
+The **Repair Bay** (`arcade.html`) is the second side job: broken cabinets come in and you
+**rewire** each one by connecting every wire to its matching colour on the other side
+(mismatches spark and cost you time), then it powers back on. Fix as many as you can in a
+75-second shift; clean, fast fixes build a combo. Like pizza, it's modest side income.
+
 The bowling itself has a deliberately **clean, "not jumbled" look** inspired by *Dave the Diver*: the scene renders to a
 low-resolution buffer and is upscaled **nearest-neighbour** for crisp chunky pixels,
 with distinct depth layers (sharp warm lane up front, hazy cool background) and
@@ -128,6 +133,7 @@ games/
     league.js              # season model + Pro Shop balls, shared everywhere
     proshop.html, proshop.js # buy & equip bowling balls (weight = pin carry, hook)
     pizza.html, pizza.js, pizza.css # Pizza Counter side job (earn league money)
+    arcade.html, arcade.js, arcade.css # Repair Bay side job (rewire cabinets)
     lanes.html             # the bowling game shell
     style.css              # flat, high-contrast corner HUD (crisp over pixelated 3D)
     game.js                # shot state machine (aim/power/curve/spin), 10-pin scoring

@@ -1,0 +1,51 @@
+/* arcade.css — Repair Bay (rewire the broken cabinets). Layered on hub.css. */
+
+.marquee.compact { padding: 16px 14px 12px; }
+.chips .clock b { color: #ffd23f; }
+
+.fault {
+  text-align: center; font-size: 15px; font-weight: 800; color: #ff9ec4;
+  background: rgba(10, 15, 32, 0.7); border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 999px; padding: 6px 14px; margin: 0 auto 14px; max-width: 90%;
+}
+
+.repair-scene { display: flex; gap: 16px; align-items: stretch; justify-content: center; flex-wrap: wrap; }
+
+/* the cabinet */
+.cabinet { width: 96px; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
+.cab-screen {
+  width: 84px; height: 64px; border-radius: 8px; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: center; font-size: 30px;
+  background: #05070f; border: 4px solid #2a3556; color: #6a7aa0;
+  box-shadow: inset 0 0 14px rgba(0,0,0,0.8);
+}
+.cabinet.fixed .cab-screen { background: radial-gradient(circle, #123a2a, #05201a); border-color: #39d98a; color: #7dffc4; box-shadow: 0 0 18px #39d98a88, inset 0 0 14px #0a2a1e; }
+.cabinet.sparking .cab-screen { border-color: #ff5d5d; }
+.cab-panel { width: 90px; height: 44px; border-radius: 6px; background: linear-gradient(180deg, #3a2f4f, #241d33); border: 3px solid #4a3d63; }
+.cab-legs { width: 90px; height: 14px; background: #1a1524; border-radius: 0 0 6px 6px; }
+
+/* the wiring puzzle */
+.wire-panel {
+  position: relative; flex: 1 1 300px; max-width: 440px; min-height: 240px;
+  background: repeating-linear-gradient(180deg, #14101f 0 22px, #171226 22px 44px);
+  border: 3px solid #3a3556; border-radius: 14px; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+}
+#wire-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#wire-svg line { stroke-width: 3.2; stroke-linecap: round; }
+.end {
+  position: absolute; width: 30px; height: 30px; border-radius: 50%;
+  transform: translate(-50%, -50%); cursor: pointer;
+  border: 3px solid rgba(255,255,255,0.85);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5); transition: transform 0.1s;
+}
+.end:active { transform: translate(-50%, -50%) scale(0.9); }
+.end.sel { outline: 3px solid #fff; outline-offset: 2px; transform: translate(-50%, -50%) scale(1.15); }
+.end.done { cursor: default; opacity: 0.55; box-shadow: none; }
+.end.done::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #fff; }
+
+.spark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 60px; animation: sparkpop 0.35s ease; pointer-events: none; }
+@keyframes sparkpop { 0% { transform: scale(0.4); opacity: 0; } 40% { opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+
+.repair-hint { text-align: center; font-size: 13px; color: #b9c8ea; margin-top: 12px; }
+.repair-hint.bad { color: #ff8f8f; font-weight: 800; }
+.repair-hint.good { color: #7dffc4; font-weight: 800; }
