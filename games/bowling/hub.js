@@ -29,7 +29,7 @@
         `<div class="m-target">${champ ? 'Strike Valley takes the title.' : 'There\'s always next season.'}</div>` +
         `<button id="btn-newseason" class="bowl">Start New Season</button>` +
         lastResultLine();
-      $('btn-newseason').addEventListener('click', () => { L.startSeason(); render(); toast('New season! Week 1 is on.'); });
+      $('btn-newseason').addEventListener('click', () => { L.startSeason(); if (window.Story) Story.newSeason(); render(); toast('New season! Week 1 is on.'); });
       return;
     }
     // lock this week's opponent + target so what we show is what you'll face
@@ -40,7 +40,13 @@
       `<div class="m-target">Beat their <b>${n.oppScore}</b> to win the night</div>` +
       `<button id="btn-bowl" class="bowl">🎳 BOWL LEAGUE NIGHT</button>` +
       lastResultLine();
-    $('btn-bowl').addEventListener('click', () => { window.location.href = 'lanes.html'; });
+    $('btn-bowl').addEventListener('click', () => goBowl(n.opp));
+  }
+
+  // play the rival's trash-talk, then head to the lanes
+  function goBowl(opp) {
+    if (window.Story) Story.rivalBanter(opp, () => { window.location.href = 'lanes.html'; });
+    else window.location.href = 'lanes.html';
   }
 
   function renderStandings() {
@@ -66,8 +72,9 @@
 
   function boot() {
     // "The Lanes" tile launches the same league night as the matchup button
-    $('spot-lanes').addEventListener('click', (e) => { e.preventDefault(); if (!L.done) { L.beginNight(); window.location.href = 'lanes.html'; } else toast('Season\'s done — start a new one!'); });
+    $('spot-lanes').addEventListener('click', (e) => { e.preventDefault(); if (!L.done) { L.beginNight(); goBowl(L.currentOpp()); } else toast('Season\'s done — start a new one!'); });
     render();
+    if (window.Story) { Story.init(); Story.onHubLoad(); }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

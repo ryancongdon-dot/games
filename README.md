@@ -62,6 +62,12 @@ The **Repair Bay** (`arcade.html`) is the second side job: broken cabinets come 
 (mismatches spark and cost you time), then it powers back on. Fix as many as you can in a
 75-second shift; clean, fast fixes build a combo. Like pizza, it's modest side income.
 
+**Story & characters** (`story.js`) give the season its *soul*: a first-visit **intro**
+(Gus, the owner about to lose the alley; Rosa at the pizza counter), **six rival captains**
+who **trash-talk before each league night** and **react to the result**, plus a **midseason
+turn** and a **championship finale** (win = the alley is saved). A small dialogue engine
+drives it; a fresh season replays the beats but not the intro.
+
 The bowling itself has a deliberately **clean, "not jumbled" look** inspired by *Dave the Diver*: the scene renders to a
 low-resolution buffer and is upscaled **nearest-neighbour** for crisp chunky pixels,
 with distinct depth layers (sharp warm lane up front, hazy cool background) and
@@ -131,6 +137,7 @@ games/
     index.html             # the ALLEY HUB (home screen / entry point)
     hub.css, hub.js        # hub styling + logic (matchup, standings, spots)
     league.js              # season model + Pro Shop balls, shared everywhere
+    story.js               # cast, dialogue engine + season story beats (the "soul")
     proshop.html, proshop.js # buy & equip bowling balls (weight = pin carry, hook)
     pizza.html, pizza.js, pizza.css # Pizza Counter side job (earn league money)
     arcade.html, arcade.js, arcade.css # Repair Bay side job (rewire cabinets)

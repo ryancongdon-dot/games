@@ -165,6 +165,36 @@ body {
 }
 .primary.ghost:active { box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4); }
 
+/* ---- dialogue (story.js) ---- */
+.dlg {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(4, 7, 16, 0.55); padding: 0 14px 26px; cursor: pointer;
+  animation: dlgfade 0.15s ease;
+}
+@keyframes dlgfade { from { opacity: 0; } to { opacity: 1; } }
+.dlg-box {
+  width: min(560px, 96vw);
+  display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(180deg, #1a2340, #0e1730);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px; padding: 16px 18px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6);
+}
+.dlg-portrait {
+  flex: 0 0 auto; width: 64px; height: 64px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; font-size: 40px;
+  background: rgba(255, 255, 255, 0.06); border: 2px solid rgba(255, 255, 255, 0.14);
+}
+.dlg-box.narrator .dlg-portrait { opacity: 0.5; }
+.dlg-main { flex: 1; min-width: 0; }
+.dlg-name { font-size: 15px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 3px; }
+.dlg-box.narrator .dlg-name { display: none; }
+.dlg-text { font-size: 15px; line-height: 1.45; color: #eef3ff; }
+.dlg-box.narrator .dlg-text { color: #b9c8ea; font-style: italic; }
+.dlg-next { flex: 0 0 auto; color: #ffd23f; font-size: 18px; align-self: flex-end; animation: nextpulse 1s infinite; }
+@keyframes nextpulse { 50% { opacity: 0.35; } }
+
 /* ---- toast ---- */
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
