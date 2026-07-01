@@ -1,0 +1,35 @@
+/* alley.css — the walkable alley scene. Layered on hub.css. */
+html, body { height: 100%; margin: 0; overflow: hidden; background: #0c1020; }
+#world { position: fixed; inset: 0; }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.w-hud { position: absolute; top: calc(env(safe-area-inset-top) + 10px); left: 10px; right: 10px; display: flex; gap: 8px; flex-wrap: wrap; z-index: 5; }
+
+.w-prompt {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + 120px); z-index: 6;
+  background: rgba(10, 15, 32, 0.9); border: 2px solid #ffd23f; color: #fff;
+  border-radius: 999px; padding: 8px 18px; font-size: 15px; font-weight: 800;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5); white-space: nowrap;
+}
+.w-prompt b { color: #ffd23f; }
+
+.w-controls {
+  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 18px); z-index: 6;
+  display: flex; align-items: center; justify-content: center; gap: 18px;
+}
+.w-btn {
+  width: 66px; height: 66px; border-radius: 18px; font-size: 26px; font-weight: 900;
+  color: #eaf1ff; background: rgba(30, 42, 74, 0.85); border: 2px solid rgba(255,255,255,0.16);
+  box-shadow: 0 4px 0 rgba(0,0,0,0.35);
+}
+.w-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+.w-btn.act { background: linear-gradient(180deg, #ffe07a, #ffb43f); color: #08121f; box-shadow: 0 4px 0 #c97f1e; }
+
+/* standings overlay reuses hub.css .overlay/.card/.standings/.thead/.primary */
+.standings .srow { display: grid; grid-template-columns: 32px 1fr 56px 52px; align-items: center; gap: 6px; padding: 7px 4px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.standings .srow.me { background: rgba(255,210,63,0.14); border-radius: 8px; }
+.standings .srow.me .t-name { color: #ffd23f; }
+.standings .t-rec { text-align: right; color: #cfe1ff; font-weight: 800; }
+.standings .t-pf { text-align: right; color: #9fb4dd; }
+.thead { display: grid; grid-template-columns: 32px 1fr 56px 52px; font-size: 11px; color: #7e92bd; font-weight: 800; padding: 0 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-top: 8px; }

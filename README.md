@@ -68,6 +68,13 @@ who **trash-talk before each league night** and **react to the result**, plus a 
 turn** and a **championship finale** (win = the alley is saved). A small dialogue engine
 drives it; a fresh season replays the beats but not the intro.
 
+**Walkable alley (beta)** — `alley.html` (linked from the top of the hub) is a first pass
+at a *Dave-the-Diver*-style **walkable scene**: your **code-drawn character** (no emoji)
+strolls the alley — arrow keys / on-screen ◀ ▶ / tap-to-walk — up to Gus, Rosa, the repair
+bench, the pro shop, or the standings board, and you press the action button to bowl, take a
+job, or talk. Characters are drawn procedurally in `sprites.js` (swap for real sprite sheets
+later behind the same draw calls). Story beats + dialogue (with drawn face portraits) play here too.
+
 The bowling itself has a deliberately **clean, "not jumbled" look** inspired by *Dave the Diver*: the scene renders to a
 low-resolution buffer and is upscaled **nearest-neighbour** for crisp chunky pixels,
 with distinct depth layers (sharp warm lane up front, hazy cool background) and
@@ -138,6 +145,8 @@ games/
     hub.css, hub.js        # hub styling + logic (matchup, standings, spots)
     league.js              # season model + Pro Shop balls, shared everywhere
     story.js               # cast, dialogue engine + season story beats (the "soul")
+    sprites.js             # code-drawn characters (no emoji) + dialogue face portraits
+    alley.html, alley.js, alley.css # walkable alley scene (beta) — move around & interact
     proshop.html, proshop.js # buy & equip bowling balls (weight = pin carry, hook)
     pizza.html, pizza.js, pizza.css # Pizza Counter side job (earn league money)
     arcade.html, arcade.js, arcade.css # Repair Bay side job (rewire cabinets)

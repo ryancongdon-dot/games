@@ -32,6 +32,15 @@ body {
 .marquee h1 span { display: block; }
 .marquee .tag { margin: 8px 0 0; color: #ffd36b; font-size: 13px; font-weight: 700; letter-spacing: 2px; }
 
+/* ---- walkable-alley banner ---- */
+.enter-alley {
+  display: block; text-align: center; text-decoration: none;
+  margin: 0 0 14px; padding: 12px; border-radius: 14px; font-weight: 900; letter-spacing: 0.5px;
+  color: #08121f; background: linear-gradient(90deg, #8fe1ff, #ffd23f);
+  box-shadow: 0 6px 0 #2c6f96;
+}
+.enter-alley:active { transform: translateY(3px); box-shadow: 0 3px 0 #2c6f96; }
+
 /* ---- status chips ---- */
 .chips { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 4px 0 18px; }
 .chip {

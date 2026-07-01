@@ -98,7 +98,14 @@ const Story = (() => {
   function showLine() {
     const l = queue[qi][li];
     const c = CAST[l.who] || CAST.narrator;
-    document.getElementById('dlg-face').textContent = c.face;
+    // drawn face if the sprite system is loaded, else the emoji fallback
+    const faceEl = document.getElementById('dlg-face');
+    const sp = (typeof window !== 'undefined') && window.Sprites;
+    if (sp && sp.CHARS[l.who]) {
+      const cvs = sp.facePortrait(l.who, 56);
+      if (cvs) { faceEl.textContent = ''; faceEl.innerHTML = ''; faceEl.appendChild(cvs); }
+      else faceEl.textContent = c.face;
+    } else { faceEl.innerHTML = ''; faceEl.textContent = c.face; }
     const nm = document.getElementById('dlg-name');
     nm.textContent = c.name; nm.style.color = c.color;
     document.getElementById('dlg-text').textContent = l.text;
