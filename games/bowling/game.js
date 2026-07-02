@@ -200,7 +200,28 @@
     el.frameLabel.textContent = 'Frame ' + (G.frame + 1);
     el.ballLabel.textContent = 'Ball ' + G.ball;
     const n = L && L.activeNight();
-    el.leagueLine.textContent = n ? `Wk${n.week} vs ${n.opp} · beat ${n.oppScore}` : 'Practice';
+    if (!n) { el.leagueLine.textContent = 'Practice'; return; }
+    // live head-to-head: opponent's game reveals frame-by-frame alongside yours
+    if (n.oppCum && G.frame > 0) {
+      const oc = n.oppCum[Math.min(G.frame - 1, 9)];
+      el.leagueLine.textContent = `vs ${n.opp} · them: ${oc} thru ${Math.min(G.frame, 10)}`;
+    } else {
+      el.leagueLine.textContent = `Wk${n.week} vs ${n.opp} — race to the highest game!`;
+    }
+  }
+
+  // narrate the opponent's frame after yours completes (their game was
+  // pre-simulated when the night was locked in)
+  function revealOppFrame(i) {
+    const n = L && L.activeNight();
+    if (!n || !n.oppFrames || i < 0 || i > 9) return;
+    const rolls = n.oppFrames[i];
+    const first = rolls[0] || 0;
+    let msg;
+    if (first === 10) msg = `${n.opp} roll a STRIKE 😤`;
+    else if (first + (rolls[1] || 0) === 10) msg = `${n.opp} pick up the spare`;
+    else msg = `${n.opp} knock down ${first + (rolls[1] || 0)}`;
+    setTimeout(() => toast(msg, 1300), 500);
   }
 
   function throwBall() {
@@ -264,6 +285,7 @@
   }
 
   function nextFrame() {
+    revealOppFrame(G.frame);   // their frame N plays out after yours
     G.frame++;
     G.ball = 1;
     if (G.frame >= FRAMES) { endGame(); return; }
@@ -297,7 +319,7 @@
   }
 
   function newGame() {
-    if (window.GameAudio) GameAudio.resume();   // unlock audio on the PLAY gesture
+    if (window.GameAudio) { GameAudio.resume(); GameAudio.startMusic(); }   // unlock audio on the PLAY gesture
     G.frame = 0; G.ball = 1; G.phase = 'setup';
     freshFrames();
     el.title.classList.add('hidden');

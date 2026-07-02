@@ -72,11 +72,73 @@ const League = (() => {
     return clamp(Math.round(avg + ri(-22, 22)), 90, 235);
   }
 
-  // call before launching a league night; locks this week's opponent + their score
+  // ---- simulate a full opponent game (10 frames of real rolls) ----
+  function scoreGame(frames) {
+    const flat = [];
+    frames.forEach((rolls, idx) => rolls.forEach((r) => flat.push({ r, idx })));
+    let running = 0;
+    const cum = [];
+    for (let i = 0; i < 10; i++) {
+      const start = flat.findIndex((x) => x.idx === i);
+      const r0 = start >= 0 ? flat[start].r : 0;
+      if (i < 9) {
+        if (r0 === 10) running += 10 + (flat[start + 1] ? flat[start + 1].r : 0) + (flat[start + 2] ? flat[start + 2].r : 0);
+        else {
+          const r1 = flat[start + 1] ? flat[start + 1].r : 0;
+          if (r0 + r1 === 10) running += 10 + (flat[start + 2] ? flat[start + 2].r : 0);
+          else running += r0 + r1;
+        }
+      } else running += frames[9].reduce((a, b) => a + b, 0);
+      cum.push(running);
+    }
+    return cum;
+  }
+  function simFrames(skill) {
+    const strikeP = 0.10 + skill * 0.30;
+    const spareP = 0.28 + skill * 0.25;
+    const frames = [];
+    const firstRoll = () => (Math.random() < strikeP ? 10 : ri(3, 9));
+    const secondRoll = (first) => (Math.random() < spareP ? 10 - first : ri(0, Math.max(0, 9 - first)));
+    for (let f = 0; f < 9; f++) {
+      const a = firstRoll();
+      frames.push(a === 10 ? [10] : [a, secondRoll(a)]);
+    }
+    const tenth = [];
+    let a = firstRoll(); tenth.push(a);
+    if (a === 10) { const b = firstRoll(); tenth.push(b); tenth.push(b === 10 ? firstRoll() : secondRoll(b)); }
+    else { const b = secondRoll(a); tenth.push(b); if (a + b === 10) tenth.push(firstRoll()); }
+    frames.push(tenth);
+    return frames;
+  }
+  // pick the simulated game closest to the week's target, so difficulty ramps
+  function simOpponentGame(week) {
+    const target = oppTarget(week);
+    const skill = (week - 1) / Math.max(1, WEEKS - 1);
+    let best = null, bestD = 1e9;
+    for (let i = 0; i < 18; i++) {
+      const frames = simFrames(skill);
+      const cum = scoreGame(frames);
+      const d = Math.abs(cum[9] - target);
+      if (d < bestD) { bestD = d; best = { frames, cum }; }
+    }
+    return best;
+  }
+
+  // call before launching a league night; locks this week's opponent and
+  // pre-simulates their full game so it can be revealed frame-by-frame.
   function beginNight() {
     const s = load();
     if (s.done) return null;
-    if (!s.activeNight) { s.activeNight = { week: s.week, opp: currentOpp(), oppScore: oppTarget(s.week) }; persist(); }
+    if (!s.activeNight) {
+      const sim = simOpponentGame(s.week);
+      s.activeNight = { week: s.week, opp: currentOpp(), oppScore: sim.cum[9], oppFrames: sim.frames, oppCum: sim.cum };
+      persist();
+    } else if (!s.activeNight.oppCum) {
+      // migrate an older locked night (fixed score, no frames)
+      const sim = simOpponentGame(s.activeNight.week);
+      s.activeNight.oppFrames = sim.frames; s.activeNight.oppCum = sim.cum; s.activeNight.oppScore = sim.cum[9];
+      persist();
+    }
     return s.activeNight;
   }
   function hasActiveNight() { return !!load().activeNight; }

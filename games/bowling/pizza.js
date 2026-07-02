@@ -248,6 +248,10 @@
       const p = Sprites.facePortrait('rosa', 52);
       if (p) { const el = $('cook'); el.textContent = ''; el.appendChild(p); }
     }
+    // music on the first tap (browser autoplay rules)
+    const startTunes = () => { if (window.GameAudio) { GameAudio.resume(); GameAudio.startMusic(); } };
+    window.addEventListener('pointerdown', startTunes, { once: true });
+    window.addEventListener('keydown', startTunes, { once: true });
     renderToppingButtons();
     renderSeats(); updateHud(); renderPrep();
     $('btn-main').addEventListener('click', onMain);

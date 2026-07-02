@@ -529,6 +529,11 @@ function boot() {
     if (hit.length) target = { x: hit[0].point.x, z: hit[0].point.z };
   });
 
+  // lo-fi house music on the first tap/keypress (browser autoplay rules)
+  const startTunes = () => { if (window.GameAudio) { GameAudio.resume(); GameAudio.startMusic(); } };
+  window.addEventListener('pointerdown', startTunes, { once: true });
+  window.addEventListener('keydown', startTunes, { once: true });
+
   if (ST) { ST.init(); ST.onHubLoad(); }
   loadCast();
   animate();

@@ -98,10 +98,70 @@ const GameAudio = (() => {
     else if (name === 'strike') strike();
   }
 
+  // ---- chill lo-fi background loop (procedural, quiet) ----
+  let musicOn = false, musicTimer = null, musicGain = null;
+  const BPM = 84, BEAT = 60 / BPM;
+  // Dm pentatonic-ish plucks over a two-bar D–Bb bass; sparse & mellow
+  const BASS = [73.42, 73.42, 58.27, 58.27];                       // per half-bar
+  const LEAD = [293.66, 349.23, 440.0, 392.0, 349.23, 293.66, 261.63, 293.66];
+  function scheduleBar(t0, bar) {
+    const swing = BEAT * 0.08;
+    // bass: one warm note per half-bar
+    for (let h = 0; h < 2; h++) {
+      const f = BASS[(bar * 2 + h) % BASS.length];
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+      const g = ctx.createGain();
+      const t = t0 + h * 2 * BEAT;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.10, t + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2 * BEAT * 0.9);
+      o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + 2 * BEAT);
+    }
+    // plucks: airy triangle melody, skips beats for space
+    for (let s = 0; s < 8; s++) {
+      if ((bar + s) % 3 === 1) continue;
+      const f = LEAD[(bar * 3 + s) % LEAD.length];
+      const t = t0 + s * (BEAT / 2) + (s % 2 ? swing : 0);
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.05, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + 0.55);
+    }
+    // soft hats
+    for (let s = 0; s < 4; s++) {
+      const t = t0 + s * BEAT + BEAT / 2;
+      const src = ctx.createBufferSource(); src.buffer = noiseBuffer(0.05);
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6500;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.03, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      src.connect(hp); hp.connect(g); g.connect(musicGain);
+      src.start(t); src.stop(t + 0.06);
+    }
+  }
+  function startMusic() {
+    if (!enabled) return;
+    ensure();
+    if (!ctx || musicOn) return;
+    musicOn = true;
+    if (!musicGain) { musicGain = ctx.createGain(); musicGain.gain.value = 0.5; musicGain.connect(master); }
+    let bar = 0;
+    let nextT = ctx.currentTime + 0.1;
+    const barLen = 4 * BEAT;
+    const tick = () => {
+      if (!musicOn) return;
+      while (nextT < ctx.currentTime + barLen * 1.5) { scheduleBar(nextT, bar); bar = (bar + 1) % 64; nextT += barLen; }
+      musicTimer = setTimeout(tick, barLen * 500);
+    };
+    tick();
+  }
+  function stopMusic() { musicOn = false; clearTimeout(musicTimer); }
+
   return {
-    play,
+    play, startMusic, stopMusic,
     resume: ensure,
-    toggle() { enabled = !enabled; return enabled; },
+    toggle() { enabled = !enabled; if (!enabled) stopMusic(); return enabled; },
     get enabled() { return enabled; },
   };
 })();

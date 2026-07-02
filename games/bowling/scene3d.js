@@ -74,6 +74,8 @@ const Scene = (() => {
   let onSettled = null;
   let onImpact = null;              // fired when the ball first strikes a pin
   let lastImpactMs = 0;
+  let shakeT = 0;                   // camera-shake energy (decays)
+  let bursts = [];                  // impact dust particles
 
   // camera rig — raised & tilted down so the ball sits in the UPPER-MIDDLE of
   // the frame (clear of the bottom control panel) with the pins near the top.
@@ -336,6 +338,10 @@ const Scene = (() => {
       const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       if (now - lastImpactMs < 120) return;
       lastImpactMs = now;
+      // juice: dust burst + camera shake scaled by how hard we hit
+      const sp = ballBody.velocity.length();
+      spawnBurst(ballBody.position, Math.min(1, sp / 9));
+      shakeT = Math.min(0.5, 0.18 + sp * 0.02);
       if (typeof onImpact === 'function') onImpact();
     });
   }
@@ -565,6 +571,39 @@ const Scene = (() => {
     }
   }
 
+  // impact dust: a short-lived burst of glowing specks
+  function spawnBurst(pos, strength) {
+    const n = 14 + Math.floor(strength * 12);
+    const geo = new THREE.BufferGeometry();
+    const arr = new Float32Array(n * 3);
+    const vels = [];
+    for (let i = 0; i < n; i++) {
+      arr[i * 3] = pos.x; arr[i * 3 + 1] = pos.y + 0.05; arr[i * 3 + 2] = pos.z;
+      vels.push(new THREE.Vector3((Math.random() - 0.5) * 3, Math.random() * 2.4 + 0.6, (Math.random() - 0.6) * 3));
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    const mat = new THREE.PointsMaterial({ color: 0xffe8b0, size: 0.07, transparent: true, opacity: 0.95 });
+    const pts = new THREE.Points(geo, mat);
+    scene.add(pts);
+    bursts.push({ pts, vels, life: 0.55 });
+  }
+  function updateBursts(dt) {
+    for (let i = bursts.length - 1; i >= 0; i--) {
+      const b = bursts[i];
+      b.life -= dt;
+      const pos = b.pts.geometry.attributes.position;
+      for (let k = 0; k < b.vels.length; k++) {
+        b.vels[k].y -= 6 * dt;
+        pos.array[k * 3] += b.vels[k].x * dt;
+        pos.array[k * 3 + 1] += b.vels[k].y * dt;
+        pos.array[k * 3 + 2] += b.vels[k].z * dt;
+      }
+      pos.needsUpdate = true;
+      b.pts.material.opacity = Math.max(0, b.life / 0.55);
+      if (b.life <= 0) { scene.remove(b.pts); b.pts.geometry.dispose(); b.pts.material.dispose(); bursts.splice(i, 1); }
+    }
+  }
+
   // sync three meshes from cannon bodies
   function syncMeshes() {
     ballMesh.position.copy(ballBody.position);
@@ -599,7 +638,14 @@ const Scene = (() => {
     camPos.z += (posZ - camPos.z) * k;
     camLook.x += (lookX - camLook.x) * k;
     camLook.z += (lookZ - camLook.z) * k;
-    camera.position.set(camPos.x, camHome.y, camPos.z);
+    // impact shake (decays fast)
+    let sx = 0, sy = 0;
+    if (shakeT > 0) {
+      shakeT = Math.max(0, shakeT - dt * 1.6);
+      const m = shakeT * 0.09;
+      sx = (Math.random() - 0.5) * m; sy = (Math.random() - 0.5) * m;
+    }
+    camera.position.set(camPos.x + sx, camHome.y + sy, camPos.z);
     camera.lookAt(camLook.x, camLookHome.y, camLook.z);
   }
 
@@ -612,6 +658,7 @@ const Scene = (() => {
     dt = Math.min(dt, 0.05);
     stepPhysics(dt);
     syncMeshes();
+    updateBursts(dt);
     updateCamera(dt);
     renderer.render(scene, camera);
   }

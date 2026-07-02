@@ -154,6 +154,10 @@
   }
 
   function boot() {
+    // music on the first tap (browser autoplay rules)
+    const startTunes = () => { if (window.GameAudio) { GameAudio.resume(); GameAudio.startMusic(); } };
+    window.addEventListener('pointerdown', startTunes, { once: true });
+    window.addEventListener('keydown', startTunes, { once: true });
     $('btn-again').addEventListener('click', newShift);
     $('btn-hub').addEventListener('click', () => { window.location.href = 'index.html'; });
     updateHud(); newCabinet();
