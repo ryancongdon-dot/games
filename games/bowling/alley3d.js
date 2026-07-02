@@ -1,7 +1,7 @@
 // alley3d.js — the walkable alley in real 3D, using Kenney's CC0 animated
-// characters (GLB). Your character walks the alley (arrow keys / WASD / on-screen
-// pad / tap-to-walk), up to Gus, Rosa, the repair bench, the pro shop or the
-// standings board; press the action button to bowl, take a job, or talk.
+// characters (GLB). Pass 2: full environment — cosmic carpet, lane bank with
+// pins, ceiling & lamps, neon sign, real counters/cabinets, tables, wandering
+// regulars, and a live standings board. (Movement/interaction unchanged.)
 import * as THREE from 'three';
 import { GLTFLoader } from './vendor/jsm/loaders/GLTFLoader.js';
 
@@ -16,34 +16,140 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x241a33);
-scene.fog = new THREE.Fog(0x241a33, 22, 42);
+scene.background = new THREE.Color(0x120d1f);
+scene.fog = new THREE.Fog(0x120d1f, 26, 46);
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 120);
 
-// ---------- lights ----------
-scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x2a2038, 0.9));
-const key = new THREE.DirectionalLight(0xfff2d8, 1.15);
-key.position.set(6, 14, 8); key.castShadow = true;
+// ---------- lights (few real lights; emissive fakes the rest) ----------
+scene.add(new THREE.HemisphereLight(0xbfcdf5, 0x241a33, 0.75));
+const key = new THREE.DirectionalLight(0xffe9c8, 1.0);
+key.position.set(5, 13, 9); key.castShadow = true;
 key.shadow.mapSize.set(1024, 1024);
 key.shadow.camera.near = 1; key.shadow.camera.far = 50;
 key.shadow.camera.left = -18; key.shadow.camera.right = 18;
 key.shadow.camera.top = 14; key.shadow.camera.bottom = -14;
 scene.add(key);
+const pinkGlow = new THREE.PointLight(0xff5d9e, 0.55, 18); pinkGlow.position.set(0, 4.4, -5.5); scene.add(pinkGlow);
+const cyanGlow = new THREE.PointLight(0x4ad2ff, 0.4, 16); cyanGlow.position.set(-9, 3.2, -4.5); scene.add(cyanGlow);
+
+// ---------- canvas textures ----------
+function carpetTexture() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1c1440'; g.fillRect(0, 0, 256, 256);
+  const cols = ['#ff5d9e', '#4ad2ff', '#ffd23f', '#8a5cff', '#39d98a'];
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 46; i++) {
+    const col = cols[Math.floor(rnd() * cols.length)];
+    g.strokeStyle = col; g.fillStyle = col; g.globalAlpha = 0.5; g.lineWidth = 3;
+    const x = rnd() * 256, y = rnd() * 256, k = rnd();
+    if (k < 0.34) { g.beginPath(); g.arc(x, y, 4 + rnd() * 6, 0, Math.PI * 1.4); g.stroke(); }
+    else if (k < 0.67) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + 10 + rnd() * 8, y + 4); g.lineTo(x + 4, y + 12 + rnd() * 6); g.closePath(); g.fill(); }
+    else { g.beginPath(); g.moveTo(x, y); g.lineTo(x + 8, y - 8); g.lineTo(x + 16, y); g.lineTo(x + 24, y - 8); g.stroke(); }
+  }
+  g.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 3);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+function woodTexture() {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#c98b3e'; g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 8; i++) {
+    g.fillStyle = i % 2 ? '#c2853a' : '#d09244';
+    g.fillRect(0, i * 16, 128, 16);
+    g.fillStyle = 'rgba(120,70,20,0.55)'; g.fillRect(0, i * 16, 128, 1);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 4);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+function neonSignTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
+  const g = c.getContext('2d');
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = '#ff2d7e'; g.shadowBlur = 34;
+  g.fillStyle = '#ffb3d1'; g.font = '900 92px system-ui, sans-serif';
+  g.fillText('STRIKE VALLEY', 512, 92);
+  g.shadowColor = '#2da8ff'; g.shadowBlur = 26;
+  g.fillStyle = '#bfe6ff'; g.font = '900 64px system-ui, sans-serif';
+  g.fillText('L A N E S', 512, 188);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+}
+function standingsTexture() {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 640;
+  const g = c.getContext('2d');
+  g.fillStyle = '#0b1226'; g.fillRect(0, 0, 512, 640);
+  g.strokeStyle = '#3c4a7a'; g.lineWidth = 8; g.strokeRect(8, 8, 496, 624);
+  g.fillStyle = '#ffd23f'; g.font = '900 44px system-ui, sans-serif'; g.textAlign = 'center';
+  g.fillText('LEAGUE STANDINGS', 256, 66);
+  if (L) {
+    const rows = L.standings();
+    g.font = '700 30px system-ui, sans-serif'; g.textAlign = 'left';
+    rows.forEach((tm, i) => {
+      const y = 130 + i * 64;
+      const me = tm.name === L.player;
+      if (me) { g.fillStyle = 'rgba(255,210,63,0.18)'; g.fillRect(20, y - 34, 472, 50); }
+      g.fillStyle = me ? '#ffd23f' : '#dfe8ff';
+      g.fillText((i + 1) + '.  ' + tm.name, 36, y);
+      g.textAlign = 'right'; g.fillText(tm.w + '–' + tm.l, 476, y); g.textAlign = 'left';
+    });
+  }
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+}
 
 // ---------- environment ----------
 const FLOOR = { x0: -14, x1: 14, z0: -7, z1: 7 };
-function box(w, h, d, color, x, y, z, rough) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshStandardMaterial({ color, roughness: rough == null ? 0.85 : rough }));
-  m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; scene.add(m); return m;
+function box(w, h, d, color, x, y, z, opts) {
+  opts = opts || {};
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness: opts.rough == null ? 0.85 : opts.rough,
+    metalness: opts.metal || 0,
+    map: opts.map || null,
+    emissive: opts.emissive || 0x000000, emissiveIntensity: opts.emissiveI == null ? 1 : opts.emissiveI,
+  });
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z); m.castShadow = !opts.noShadow; m.receiveShadow = true; scene.add(m); return m;
 }
-// floor + back/side walls
-const floor = box(FLOOR.x1 - FLOOR.x0, 0.4, FLOOR.z1 - FLOOR.z0, 0xb9843e, 0, -0.2, 0, 0.9);
-box(FLOOR.x1 - FLOOR.x0, 6, 0.4, 0x3a1f2e, 0, 2.8, FLOOR.z0 - 0.2);          // back wall
-box(0.4, 6, FLOOR.z1 - FLOOR.z0, 0x2e1826, FLOOR.x0 - 0.2, 2.8, 0);          // left wall
-box(0.4, 6, FLOOR.z1 - FLOOR.z0, 0x2e1826, FLOOR.x1 + 0.2, 2.8, 0);          // right wall
 
+// carpet floor + wood strip along the stations
+const floor = new THREE.Mesh(
+  new THREE.BoxGeometry(FLOOR.x1 - FLOOR.x0, 0.4, FLOOR.z1 - FLOOR.z0),
+  new THREE.MeshStandardMaterial({ map: carpetTexture(), roughness: 0.95 }));
+floor.position.set(0, -0.2, 0); floor.receiveShadow = true; scene.add(floor);
+const woodStrip = new THREE.Mesh(new THREE.BoxGeometry(FLOOR.x1 - FLOOR.x0, 0.42, 3.2),
+  new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.6 }));
+woodStrip.position.set(0, -0.19, -4.6); woodStrip.receiveShadow = true; scene.add(woodStrip);
+
+// walls + wainscot + ceiling
+box(FLOOR.x1 - FLOOR.x0, 6, 0.4, 0x2c1f3a, 0, 2.8, FLOOR.z0 - 0.2, { noShadow: true });
+box(0.4, 6, FLOOR.z1 - FLOOR.z0, 0x241a30, FLOOR.x0 - 0.2, 2.8, 0, { noShadow: true });
+box(0.4, 6, FLOOR.z1 - FLOOR.z0, 0x241a30, FLOOR.x1 + 0.2, 2.8, 0, { noShadow: true });
+box(FLOOR.x1 - FLOOR.x0, 1.0, 0.14, 0x1a1226, 0, 0.5, FLOOR.z0 + 0.08, { noShadow: true });   // wainscot
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR.x1 - FLOOR.x0, FLOOR.z1 - FLOOR.z0),
+  new THREE.MeshStandardMaterial({ color: 0x191227, roughness: 1 }));
+ceil.rotation.x = Math.PI / 2; ceil.position.set(0, 5.4, 0); scene.add(ceil);
+
+// hanging pendant lamps over the stations (emissive bulbs, no extra real lights)
+for (const lx of [-9, -4.5, 0, 4.5, 9]) {
+  box(0.05, 1.6, 0.05, 0x222, lx, 4.6, -2.2, { noShadow: true });
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10),
+    new THREE.MeshStandardMaterial({ color: 0xfff2c8, emissive: 0xffdf9e, emissiveIntensity: 1.6 }));
+  bulb.position.set(lx, 3.8, -2.2); scene.add(bulb);
+  box(0.5, 0.22, 0.5, 0x33241a, lx, 4.0, -2.2, { noShadow: true });
+}
+
+// neon sign on the back wall
+const sign = new THREE.Mesh(new THREE.PlaneGeometry(8, 2),
+  new THREE.MeshBasicMaterial({ map: neonSignTexture(), transparent: true }));
+sign.position.set(0, 4.35, FLOOR.z0 + 0.02); scene.add(sign);
+
+// labels above stations
 function label(text, x, y, z, color) {
   const c = document.createElement('canvas'); c.width = 256; c.height = 64;
   const g = c.getContext('2d');
@@ -52,7 +158,7 @@ function label(text, x, y, z, color) {
   g.fillStyle = color || '#ffd23f'; g.font = 'bold 30px system-ui, sans-serif';
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 34);
   const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
-  spr.scale.set(3.4, 0.85, 1); spr.position.set(x, y, z); scene.add(spr); return spr;
+  spr.scale.set(3.0, 0.75, 1); spr.position.set(x, y, z); scene.add(spr); return spr;
 }
 function roundRect(g, x, y, w, h, r) {
   g.beginPath(); g.moveTo(x + r, y);
@@ -60,27 +166,115 @@ function roundRect(g, x, y, w, h, r) {
   g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
 }
 
-// station props (simple shapes) at each spot
+const arcadeScreens = [];
 function buildProps() {
-  // lanes (left)
-  box(2.2, 0.15, 6, 0xc98b3e, -9, 0.08, -3.4);
-  for (let i = 0; i < 3; i++) box(0.18, 0.5, 0.18, 0xeef3ff, -9.4 + i * 0.4, 0.35, -6);
-  // pizza counter
-  box(3, 1.1, 1.1, 0x6a3b28, -4.5, 0.55, -3.2); box(1, 0.9, 0.9, 0x8a2f22, -4.5, 1.4, -3.2);
-  // repair bench + cabinet
-  box(3, 1.0, 1.0, 0x2b3550, 0, 0.5, -3.2); box(1.1, 1.6, 0.8, 0x161226, 0.9, 0.8, -4.4);
-  // pro shop shelf + balls
-  box(3, 1.8, 0.6, 0x241a0f, 4.5, 0.9, -4.2);
-  const cols = [0x1b9be0, 0xff7d4d, 0xb84dff, 0xffd23f];
-  for (let i = 0; i < 4; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), new THREE.MeshStandardMaterial({ color: cols[i], roughness: 0.25 })); s.position.set(3.9 + i * 0.45, 1.2, -4.0); s.castShadow = true; scene.add(s); }
-  // standings board
-  box(2.2, 2.6, 0.3, 0x0e1730, 9, 1.4, -5.6);
-  label('THE LANES', -9, 3.4, -5.9);
-  label('PIZZA', -4.5, 3.0, -4.2);
-  label('REPAIR', 0, 3.0, -4.4);
-  label('PRO SHOP', 4.5, 3.4, -4.2);
-  label('STANDINGS', 9, 3.4, -5.5, '#8fe1ff');
+  const wood = woodTexture();
+
+  // --- THE LANES: a bank of 3 mini-lanes with pins + masking unit ---
+  for (let i = 0; i < 3; i++) {
+    const lx = -11.4 + i * 2.0;
+    const lane = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.14, 4.6),
+      new THREE.MeshStandardMaterial({ map: wood, roughness: 0.45 }));
+    lane.position.set(lx, 0.07, -4.6); lane.receiveShadow = true; scene.add(lane);
+    box(0.14, 0.1, 4.6, 0x14101f, lx - 0.92, 0.05, -4.6, { noShadow: true });
+    box(0.14, 0.1, 4.6, 0x14101f, lx + 0.92, 0.05, -4.6, { noShadow: true });
+    for (let p = 0; p < 4; p++) {
+      const pin = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.22, 4, 8),
+        new THREE.MeshStandardMaterial({ color: 0xf7f7f2, roughness: 0.4 }));
+      pin.position.set(lx - 0.36 + p * 0.24, 0.36, -6.4); pin.castShadow = true; scene.add(pin);
+    }
+  }
+  // masking unit above the pins with glowing dots
+  box(6.4, 1.15, 0.5, 0x1b1430, -9.4, 2.35, -6.5, { noShadow: true });
+  for (let i = 0; i < 6; i++) {
+    const d = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0xff5d9e, emissive: 0xff2d7e, emissiveIntensity: 1.4 }));
+    d.position.set(-11.9 + i, 2.35, -6.22); scene.add(d);
+  }
+
+  // --- PIZZA COUNTER: counter + top, oven with glowing mouth, pizza boxes ---
+  box(3.0, 1.0, 1.0, 0x6a3b28, -4.5, 0.5, -3.2, { map: wood });
+  box(3.2, 0.12, 1.15, 0xd9a05f, -4.5, 1.06, -3.2, { rough: 0.4 });
+  box(1.5, 1.5, 0.9, 0x8a2f22, -4.5, 0.75, -4.6);
+  const mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.42),
+    new THREE.MeshStandardMaterial({ color: 0x2a0d06, emissive: 0xff7a26, emissiveIntensity: 1.5 }));
+  mouth.position.set(-4.5, 0.8, -4.14); scene.add(mouth);
+  box(1.7, 0.3, 0.9, 0x772619, -4.5, 1.65, -4.6);                       // oven crown
+  for (let i = 0; i < 3; i++) box(0.62, 0.09, 0.62, 0xf2ead8, -5.6, 1.16 + i * 0.1, -3.2, { rough: 0.7 }); // box stack
+
+  // --- REPAIR BAY: bench + two arcade cabinets with animated screens ---
+  box(3.0, 0.95, 1.0, 0x2b3550, 0, 0.48, -3.2);
+  box(3.2, 0.1, 1.15, 0x44557e, 0, 1.0, -3.2, { rough: 0.35 });
+  box(0.5, 0.5, 0.3, 0xd9a05f, 0.8, 1.28, -3.2);                        // toolbox
+  for (const [cx, rot] of [[-0.85, 0.12], [1.0, -0.08]]) {
+    const cab = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.9, 0.85),
+      new THREE.MeshStandardMaterial({ color: 0x1d1533, roughness: 0.7 }));
+    body.position.y = 0.95; body.castShadow = true; cab.add(body);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x2fd0ff, emissiveIntensity: 1.4 }));
+    scr.position.set(0, 1.35, 0.44); cab.add(scr); arcadeScreens.push(scr.material);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.1, 0.42),
+      new THREE.MeshStandardMaterial({ color: 0x3a2a5e, roughness: 0.6 }));
+    panel.position.set(0, 0.95, 0.5); panel.rotation.x = -0.35; cab.add(panel);
+    cab.position.set(cx, 0, -4.55); cab.rotation.y = rot; scene.add(cab);
+  }
+
+  // --- PRO SHOP: shelf with two rows of balls + counter ---
+  box(3.0, 2.0, 0.55, 0x241a0f, 4.5, 1.0, -4.5, { map: wood });
+  const cols = [0x1b9be0, 0xff7d4d, 0xb84dff, 0xffd23f, 0x39d98a, 0xff5d8f, 0x4ad2ff, 0xf2f2f2];
+  for (let i = 0; i < 8; i++) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 12),
+      new THREE.MeshStandardMaterial({ color: cols[i], roughness: 0.22, metalness: 0.15 }));
+    b.position.set(3.45 + (i % 4) * 0.7, i < 4 ? 1.62 : 0.92, -4.42); b.castShadow = true; scene.add(b);
+  }
+  box(2.6, 0.95, 0.9, 0x3a2a18, 4.5, 0.48, -3.2, { map: wood });
+  box(2.8, 0.1, 1.05, 0xd9a05f, 4.5, 0.98, -3.2, { rough: 0.4 });
+
+  // --- STANDINGS: framed live board ---
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 2.5),
+    new THREE.MeshBasicMaterial({ map: standingsTexture() }));
+  board.position.set(9, 2.1, FLOOR.z0 + 0.05); scene.add(board);
+  box(2.2, 2.7, 0.12, 0x3c4a7a, 9, 2.1, FLOOR.z0 + 0.02, { noShadow: true });
+
+  // --- posters between stations ---
+  for (const [px, col, txt] of [[-6.8, '#ff5d9e', 'LEAGUE NIGHT!'], [2.2, '#4ad2ff', 'PIZZA · REPAIR'], [11.8, '#ffd23f', 'EST. 1986']]) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 320;
+    const g = c.getContext('2d');
+    g.fillStyle = '#171233'; g.fillRect(0, 0, 256, 320);
+    g.strokeStyle = col; g.lineWidth = 10; g.strokeRect(10, 10, 236, 300);
+    g.fillStyle = col; g.font = '900 34px system-ui'; g.textAlign = 'center';
+    const words = txt.split(' ');
+    words.forEach((w, i) => g.fillText(w, 128, 130 + i * 44));
+    g.beginPath(); g.arc(128, 70, 30, 0, Math.PI * 2); g.fillStyle = col; g.globalAlpha = 0.9; g.fill(); g.globalAlpha = 1;
+    const poster = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.6),
+      new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(c), roughness: 0.9 }));
+    poster.position.set(px, 2.5, FLOOR.z0 + 0.03); scene.add(poster);
+  }
+
+  // --- tables & stools on the open floor ---
+  for (const t of TABLES) {
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.08, 20),
+      new THREE.MeshStandardMaterial({ color: 0x7a4423, roughness: 0.5 }));
+    top.position.set(t.x, 0.86, t.z); top.castShadow = true; scene.add(top);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.86, 10),
+      new THREE.MeshStandardMaterial({ color: 0x33241a }));
+    leg.position.set(t.x, 0.43, t.z); scene.add(leg);
+    for (const a of [0.7, 2.6, 4.6]) {
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.5, 12),
+        new THREE.MeshStandardMaterial({ color: 0xb0303e, roughness: 0.6 }));
+      st.position.set(t.x + Math.cos(a) * 1.05, 0.25, t.z + Math.sin(a) * 1.05);
+      st.castShadow = true; scene.add(st);
+    }
+  }
+
+  label('THE LANES', -9, 3.2, -5.9);
+  label('PIZZA', -4.5, 2.6, -4.2);
+  label('REPAIR', 0, 2.6, -4.4);
+  label('PRO SHOP', 4.5, 2.9, -4.2);
+  label('STANDINGS', 9, 3.6, -5.5, '#8fe1ff');
 }
+const TABLES = [{ x: -10.5, z: 3.8 }, { x: -2.4, z: 4.5 }, { x: 7.2, z: 3.9 }];
 buildProps();
 
 // ---------- characters ----------
@@ -118,7 +312,6 @@ function setAction(ch, name, fade = 0.2) {
   ch.cur = name;
 }
 
-// cast: which model + station action
 function go(url) { window.location.href = url; }
 function bowlNight() {
   if (!L || L.done) { showBoard(); return; }
@@ -136,6 +329,10 @@ const npcZ = -2.2;
 const npcs = [];
 let player = null;
 let coin = null;             // spinning coin over the pro shop (Starter Kit prop)
+
+// wandering regulars: spare character models pacing the open floor
+const WANDER_FILES = ['character-female-a', 'character-female-f', 'character-male-b'];
+const wanderers = [];
 
 function loadProp(file, x, y, z, scale) {
   loader.load('assets/props/' + file + '.glb', (g) => {
@@ -157,9 +354,23 @@ async function loadCast() {
     setAction(ch, ch.actions['idle'] ? 'idle' : 'static', 0);
     npcs.push({ station: s, char: ch, root: ch.root });
   }
+  // wandering regulars
+  for (let i = 0; i < WANDER_FILES.length; i++) {
+    const ch = await loadChar(WANDER_FILES[i], -8 + i * 7, 2.5 + i, Math.PI);
+    wanderers.push({ char: ch, state: 'idle', t: 1 + i, tx: 0, tz: 0 });
+  }
   // props from the Starter Kit (MIT): coin over the pro shop; champion flag
   loadProp('coin', 4.5, 2.4, -4.2, 1.2);
   if (L && L.done && L.rank() === 1) loadProp('flag', 9.9, 0, -5.2, 1.4);
+}
+
+// keep walkers out of the tables
+function pushOut(pos) {
+  for (const t of TABLES) {
+    const dx = pos.x - t.x, dz = pos.z - t.z;
+    const d = Math.hypot(dx, dz), R = 1.35;
+    if (d > 0.001 && d < R) { pos.x = t.x + (dx / d) * R; pos.z = t.z + (dz / d) * R; }
+  }
 }
 
 // ---------- input ----------
@@ -214,14 +425,41 @@ function animate() {
       const sp = 5.0 * dt;
       player.root.position.x = clamp(player.root.position.x + dx * sp, FLOOR.x0 + 1, FLOOR.x1 - 1);
       player.root.position.z = clamp(player.root.position.z + dz * sp, npcZ + 1.2, FLOOR.z1 - 1);
+      pushOut(player.root.position);
       player.root.rotation.y = Math.atan2(dx, dz);
       setAction(player, player.actions['walk'] ? 'walk' : 'idle');
     } else setAction(player, player.actions['idle'] ? 'idle' : 'static');
 
-    // nearest station
     near = null; let best = 2.6;
     for (const n of npcs) { const d = Math.hypot(n.root.position.x - player.root.position.x, n.root.position.z - player.root.position.z); if (d < best) { best = d; near = n; } }
     updatePrompt();
+  }
+
+  // wandering regulars
+  for (const w of wanderers) {
+    if (!w.char.root) continue;
+    w.t -= dt;
+    if (w.state === 'idle') {
+      setAction(w.char, w.char.actions['idle'] ? 'idle' : 'static');
+      if (w.t <= 0) {
+        w.tx = FLOOR.x0 + 2 + Math.random() * (FLOOR.x1 - FLOOR.x0 - 4);
+        w.tz = 0.2 + Math.random() * 5.6;
+        w.state = 'walk';
+      }
+    } else {
+      const dx = w.tx - w.char.root.position.x, dz = w.tz - w.char.root.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.25) { w.state = 'idle'; w.t = 1.5 + Math.random() * 3.5; }
+      else {
+        const sp = 1.6 * dt;
+        w.char.root.position.x += (dx / d) * sp;
+        w.char.root.position.z += (dz / d) * sp;
+        pushOut(w.char.root.position);
+        w.char.root.rotation.y = Math.atan2(dx, dz);
+        setAction(w.char, w.char.actions['walk'] ? 'walk' : 'idle');
+      }
+    }
+    if (w.char.mixer) w.char.mixer.update(dt);
   }
 
   // camera follows the player
@@ -233,6 +471,10 @@ function animate() {
   for (const n of npcs) if (n.char && n.char.mixer) n.char.mixer.update(dt);
   if (player && player.mixer) player.mixer.update(dt);
   if (coin) { coin.rotation.y += dt * 2.2; coin.position.y = 2.4 + Math.sin(clock.elapsedTime * 2) * 0.08; }
+  // arcade screens flicker through hues
+  for (let i = 0; i < arcadeScreens.length; i++) {
+    arcadeScreens[i].emissive.setHSL((clock.elapsedTime * 0.15 + i * 0.4) % 1, 0.85, 0.55);
+  }
   renderer.render(scene, camera);
 }
 
@@ -257,7 +499,6 @@ function boot() {
   $('b-act').addEventListener('click', interact);
   $('board-close').addEventListener('click', () => $('board-ov').classList.add('hidden'));
 
-  // tap the floor to walk there
   const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2();
   canvas.addEventListener('pointerdown', (e) => {
     if (frozen() || !player) return;

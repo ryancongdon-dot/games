@@ -188,6 +188,64 @@ const Scene = (() => {
     aimLine = new THREE.Line(lg, lineMat);
     aimLine.position.y = 0.005;
     scene.add(aimLine);
+
+    buildRoom();
+  }
+
+  // The alley AROUND the lane, so it isn't floating in a void: neighbouring
+  // lanes, side walls, ceiling with lamp strips, and a masking unit with lights.
+  function buildRoom() {
+    const ROOM_HW = 6.5;                       // room half-width
+    // neighbouring lanes (dimmer, beyond each gutter)
+    const dimLane = new THREE.MeshStandardMaterial({ color: 0x9a6c30, roughness: 0.5 });
+    for (const s of [-1, 1]) {
+      const nx = s * (LANE_HW + GUTTER_W + 0.05 + LANE_HW + 0.55);
+      const lane = new THREE.Mesh(new THREE.BoxGeometry(LANE_HW * 2, 0.2, LANE_LEN + 2), dimLane);
+      lane.position.set(nx, -0.12, -LANE_LEN / 2 + 0.5);
+      lane.receiveShadow = true;
+      scene.add(lane);
+      // a rack of pins on each neighbour lane (set dressing)
+      const pinMatV = new THREE.MeshStandardMaterial({ color: 0xd9d9d2, roughness: 0.5 });
+      for (let p = 0; p < 4; p++) {
+        const pin = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.2, 4, 8), pinMatV);
+        pin.position.set(nx - 0.45 + p * 0.3, 0.24, Z_HEAD - 0.1);
+        scene.add(pin);
+      }
+    }
+    // carpet flanks between approach and walls
+    const carpet = new THREE.MeshStandardMaterial({ color: 0x241a44, roughness: 0.95 });
+    for (const s of [-1, 1]) {
+      const c = new THREE.Mesh(new THREE.BoxGeometry(ROOM_HW, 0.18, 6), carpet);
+      c.position.set(s * (ROOM_HW / 2 + 3), -0.12, 3.0);
+      scene.add(c);
+    }
+    // side walls + ceiling
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x2c2040, roughness: 0.95 });
+    for (const s of [-1, 1]) {
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(LANE_LEN + 14, 6), wallMat);
+      wall.position.set(s * ROOM_HW, 2.6, -LANE_LEN / 2 + 2);
+      wall.rotation.y = s > 0 ? -Math.PI / 2 : Math.PI / 2;
+      scene.add(wall);
+    }
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_HW * 2, LANE_LEN + 14),
+      new THREE.MeshStandardMaterial({ color: 0x191227, roughness: 1 }));
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.set(0, 4.6, -LANE_LEN / 2 + 2);
+    scene.add(ceil);
+    // glowing lamp strips down the ceiling
+    for (let i = 0; i < 5; i++) {
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.35),
+        new THREE.MeshStandardMaterial({ color: 0xfff2c8, emissive: 0xffe2a8, emissiveIntensity: 1.3 }));
+      strip.position.set(0, 4.55, -2 - i * 3.6);
+      scene.add(strip);
+    }
+    // masking-unit lights above the pin deck
+    for (let i = 0; i < 5; i++) {
+      const d = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xff5d9e, emissive: 0xff2d7e, emissiveIntensity: 1.5 }));
+      d.position.set(-0.8 + i * 0.4, 1.55, -LANE_LEN - 1.15);
+      scene.add(d);
+    }
   }
 
   // ---------- physics world ----------
@@ -582,11 +640,12 @@ const Scene = (() => {
     }));
     ballMesh.castShadow = true;
     scene.add(ballMesh);
-    // finger holes hint (small dark dots)
+    // finger holes on TOP of the ball (front-facing dots read as a cartoon face)
     const hole = new THREE.MeshStandardMaterial({ color: 0x06151f, roughness: 0.6 });
-    for (const off of [[-0.03, 0.07], [0.03, 0.07], [0, 0.045]]) {
-      const h = new THREE.Mesh(new THREE.CircleGeometry(0.012, 8), hole);
-      h.position.set(off[0], off[1], BALL_R - 0.002);
+    for (const off of [[-0.028, 0.02], [0.028, 0.02], [0, -0.032]]) {
+      const h = new THREE.Mesh(new THREE.CircleGeometry(0.011, 8), hole);
+      h.position.set(off[0], BALL_R - 0.002, off[1]);
+      h.rotation.x = -Math.PI / 2;
       ballMesh.add(h);
     }
 
