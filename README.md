@@ -127,7 +127,11 @@ pixel crunch is `PIXEL`; the 140 win line is at the top of [`game.js`](games/bow
 > console devkits); the design and feel here carry over directly.
 
 ## Run it
-Just open `index.html` in a browser, or serve the folder:
+**Windows, easiest:** after pulling the latest code, double-click **`PLAY.bat`** in the
+repo root — it starts a local server and opens the game. Keep its window open while
+playing; close it when done. (Refresh the browser tab with **Ctrl+F5** after each pull.)
+
+Otherwise, open `index.html` in a browser, or serve the folder:
 
 ```bash
 python3 -m http.server 8000
