@@ -64,6 +64,19 @@ const Story = (() => {
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(flags)); } catch (e) { /* ignore */ } }
 
+  // ---------- portraits ----------
+  // Real pixel-art portraits (assets/portraits/<id>.png) win over the code-drawn
+  // faces; missing files fall back silently. Drop in new PNGs — no code changes.
+  const PIMG = {};
+  function preloadPortraits() {
+    for (const id of Object.keys(CAST)) {
+      if (id === 'narrator') continue;
+      const img = new Image();
+      img.onload = () => { PIMG[id] = img; };
+      img.src = 'assets/portraits/' + id + '.png';
+    }
+  }
+
   // ---------- dialogue overlay ----------
   let el = null;
   function ensureOverlay() {
@@ -98,10 +111,13 @@ const Story = (() => {
   function showLine() {
     const l = queue[qi][li];
     const c = CAST[l.who] || CAST.narrator;
-    // drawn face if the sprite system is loaded, else the emoji fallback
+    // real pixel-art portrait > drawn face > emoji fallback
     const faceEl = document.getElementById('dlg-face');
     const sp = (typeof window !== 'undefined') && window.Sprites;
-    if (sp && sp.CHARS[l.who]) {
+    if (PIMG[l.who]) {
+      faceEl.textContent = ''; faceEl.innerHTML = '';
+      faceEl.appendChild(PIMG[l.who].cloneNode());
+    } else if (sp && sp.CHARS[l.who]) {
       const cvs = sp.facePortrait(l.who, 56);
       if (cvs) { faceEl.textContent = ''; faceEl.innerHTML = ''; faceEl.appendChild(cvs); }
       else faceEl.textContent = c.face;
@@ -188,6 +204,7 @@ const Story = (() => {
 
   function init() {
     ensureOverlay();
+    preloadPortraits();
     window.addEventListener('keydown', (e) => {
       if (el && !el.classList.contains('hidden') && (e.key === ' ' || e.key === 'Enter')) { advance(); e.preventDefault(); }
     });

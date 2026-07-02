@@ -194,7 +194,9 @@ body {
   flex: 0 0 auto; width: 64px; height: 64px; border-radius: 14px;
   display: flex; align-items: center; justify-content: center; font-size: 40px;
   background: rgba(255, 255, 255, 0.06); border: 2px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
 }
+.dlg-portrait img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
 .dlg-box.narrator .dlg-portrait { opacity: 0.5; }
 .dlg-main { flex: 1; min-width: 0; }
 .dlg-name { font-size: 15px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 3px; }

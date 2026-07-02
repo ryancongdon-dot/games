@@ -243,11 +243,14 @@
   }
 
   function boot() {
-    // Rosa's drawn portrait as the cook (falls back to the emoji if absent)
+    // Rosa as the cook: real pixel-art portrait > drawn face > emoji
     if (window.Sprites) {
       const p = Sprites.facePortrait('rosa', 52);
       if (p) { const el = $('cook'); el.textContent = ''; el.appendChild(p); }
     }
+    const rosaImg = new Image();
+    rosaImg.onload = () => { const el = $('cook'); el.textContent = ''; el.innerHTML = ''; el.appendChild(rosaImg); };
+    rosaImg.src = 'assets/portraits/rosa.png';
     // music on the first tap (browser autoplay rules)
     const startTunes = () => { if (window.GameAudio) { GameAudio.resume(); GameAudio.startMusic(); } };
     window.addEventListener('pointerdown', startTunes, { once: true });
