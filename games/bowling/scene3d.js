@@ -138,7 +138,7 @@ const Scene = (() => {
     }
 
     // approach floor behind the foul line (darker foreground framing layer)
-    const appMat = new THREE.MeshStandardMaterial({ color: 0x3a2f4f, roughness: 0.8 });
+    const appMat = new THREE.MeshStandardMaterial({ color: 0x241a44, roughness: 0.9 });
     const approach = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 5), appMat);
     approach.position.set(0, -0.11, 3.0);
     approach.receiveShadow = true;
@@ -196,8 +196,8 @@ const Scene = (() => {
   // lanes, side walls, ceiling with lamp strips, and a masking unit with lights.
   function buildRoom() {
     const ROOM_HW = 6.5;                       // room half-width
-    // neighbouring lanes (dimmer, beyond each gutter)
-    const dimLane = new THREE.MeshStandardMaterial({ color: 0x9a6c30, roughness: 0.5 });
+    // neighbouring lanes (slightly dimmer, beyond each gutter)
+    const dimLane = new THREE.MeshStandardMaterial({ color: 0xb5813c, roughness: 0.5 });
     for (const s of [-1, 1]) {
       const nx = s * (LANE_HW + GUTTER_W + 0.05 + LANE_HW + 0.55);
       const lane = new THREE.Mesh(new THREE.BoxGeometry(LANE_HW * 2, 0.2, LANE_LEN + 2), dimLane);
@@ -239,13 +239,43 @@ const Scene = (() => {
       strip.position.set(0, 4.55, -2 - i * 3.6);
       scene.add(strip);
     }
-    // masking-unit lights above the pin deck
-    for (let i = 0; i < 5; i++) {
-      const d = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8),
-        new THREE.MeshStandardMaterial({ color: 0xff5d9e, emissive: 0xff2d7e, emissiveIntensity: 1.5 }));
-      d.position.set(-0.8 + i * 0.4, 1.55, -LANE_LEN - 1.15);
+    // masking unit framing the pin pocket, with glowing lights
+    const maskBox = new THREE.Mesh(new THREE.BoxGeometry(ROOM_HW * 2, 1.3, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0x1b1430, roughness: 0.9 }));
+    maskBox.position.set(0, 2.1, -LANE_LEN - 1.0);
+    scene.add(maskBox);
+    for (let i = 0; i < 9; i++) {
+      const d = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xff5d9e, emissive: 0xff2d7e, emissiveIntensity: 1.6 }));
+      d.position.set(-5.2 + i * 1.3, 2.1, -LANE_LEN - 0.72);
       scene.add(d);
     }
+    // warm glow strip just above the pins (lights the deck visually)
+    const glowStrip = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0xfff2c8, emissive: 0xffdf9e, emissiveIntensity: 1.5 }));
+    glowStrip.position.set(0, 1.42, -LANE_LEN - 0.7);
+    scene.add(glowStrip);
+
+    // foreground furniture so the approach isn't an empty slab:
+    // ball-return console with spare balls…
+    const console_ = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 2.0),
+      new THREE.MeshStandardMaterial({ color: 0x2b3550, roughness: 0.5 }));
+    console_.position.set(2.2, 0.25, 2.2); console_.castShadow = true; scene.add(console_);
+    const trackMat = new THREE.MeshStandardMaterial({ color: 0x1a2236, roughness: 0.7 });
+    const track = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 1.6), trackMat);
+    track.position.set(2.2, 0.52, 2.2); scene.add(track);
+    for (let i = 0; i < 2; i++) {
+      const sb = new THREE.Mesh(new THREE.SphereGeometry(0.105, 14, 10),
+        new THREE.MeshStandardMaterial({ color: i ? 0xff7d4d : 0xb84dff, roughness: 0.2, metalness: 0.2 }));
+      sb.position.set(2.2, 0.62, 1.9 + i * 0.5); sb.castShadow = true; scene.add(sb);
+    }
+    // …and a scorer's bench on the other side
+    const bench = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 0.7),
+      new THREE.MeshStandardMaterial({ color: 0xb0303e, roughness: 0.6 }));
+    bench.position.set(-2.6, 0.25, 2.6); bench.castShadow = true; scene.add(bench);
+    const benchBack = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.6, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x8e2532, roughness: 0.6 }));
+    benchBack.position.set(-2.6, 0.8, 2.92); scene.add(benchBack);
   }
 
   // ---------- physics world ----------
@@ -603,7 +633,7 @@ const Scene = (() => {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.18;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -616,7 +646,11 @@ const Scene = (() => {
     camera.lookAt(camLookHome);
 
     // restrained lighting: soft fill + one warm key with gentle shadows
-    scene.add(new THREE.HemisphereLight(0xbcd0ff, 0x20283f, 0.85));
+    scene.add(new THREE.HemisphereLight(0xd0dcff, 0x2a2240, 0.95));
+    // pin-deck spotlight so you can SEE what you're aiming at
+    const deckLight = new THREE.PointLight(0xffe8c4, 1.1, 9);
+    deckLight.position.set(0, 1.8, Z_HEAD - 0.4);
+    scene.add(deckLight);
     const key = new THREE.DirectionalLight(0xfff0d6, 1.05);
     key.position.set(2.5, 6, 2);
     key.castShadow = true;

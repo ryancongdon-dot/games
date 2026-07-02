@@ -9,10 +9,32 @@
 
 /* ---- the restaurant scene ---- */
 .scene {
-  position: relative; height: clamp(190px, 32vh, 260px);
+  position: relative; height: clamp(230px, 38vh, 320px);
   border-radius: 18px; overflow: hidden; margin: 0 0 14px;
   background: linear-gradient(180deg, #2a1838 0%, #3a1f2e 55%, #20141f 100%);
   border: 2px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+}
+.menu-board {
+  position: absolute; top: 52px; left: 18px; width: 118px; padding: 8px 10px;
+  background: #14101f; border: 3px solid #6a4f2a; border-radius: 8px;
+  color: #ffd23f; font-weight: 900; font-size: 13px; letter-spacing: 1px; text-align: center;
+}
+.menu-board span { display: block; margin-top: 4px; color: #cbb98a; font-weight: 700; font-size: 10px; line-height: 1.6; letter-spacing: 0.4px; }
+.oven-bg {
+  position: absolute; top: 60px; right: 22px; width: 110px; height: 96px;
+  background: linear-gradient(180deg, #8a2f22, #6e2418); border-radius: 10px 10px 4px 4px;
+  border: 3px solid #5a1d12;
+}
+.oven-bg i {
+  position: absolute; left: 50%; top: 46px; transform: translateX(-50%);
+  width: 64px; height: 30px; border-radius: 32px 32px 4px 4px;
+  background: radial-gradient(ellipse at 50% 100%, #ffb43f, #b3541e 70%, #2a0d06);
+  box-shadow: 0 0 18px rgba(255, 150, 60, 0.6);
+}
+.backsplash {
+  position: absolute; left: 0; right: 0; bottom: 44px; height: 30px;
+  background: repeating-conic-gradient(#3a2a4e 0% 25%, #2c2040 0% 50%) 0 0 / 20px 20px;
+  opacity: 0.8;
 }
 .scene-bg { position: absolute; inset: 0; }
 .neon {
@@ -39,10 +61,18 @@
 }
 .seat { position: relative; width: 17%; display: flex; flex-direction: column; align-items: center; cursor: default; }
 .seat.occupied { cursor: pointer; }
-.stool { width: 22px; height: 22px; border-radius: 6px 6px 4px 4px; background: #4a3322; box-shadow: inset 0 -3px 0 #2e2014; opacity: 0.55; }
-.person { font-size: clamp(30px, 7vw, 42px); line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.4)); transition: transform 0.15s; }
-.seat.active .person { transform: translateY(-3px) scale(1.08); }
-.seat.served .person { animation: bob 0.4s ease; }
+.stool {
+  width: 34px; height: 26px; border-radius: 8px 8px 4px 4px;
+  background: linear-gradient(180deg, #b0303e, #7e222d);
+  box-shadow: inset 0 -4px 0 #5c1620, 0 3px 6px rgba(0,0,0,0.4);
+  margin-bottom: 4px;
+}
+.person-cv {
+  width: clamp(52px, 9vw, 78px); height: auto;
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,0.4)); transition: transform 0.15s;
+}
+.seat.active .person-cv { transform: translateY(-4px) scale(1.08); }
+.seat.served .person-cv { animation: bob 0.4s ease; }
 @keyframes bob { 50% { transform: translateY(-8px) scale(1.12); } }
 
 .bubble {
@@ -66,6 +96,7 @@
 }
 .prep-left { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .cook { font-size: 30px; }
+.cook canvas { border-radius: 12px; background: rgba(255, 255, 255, 0.07); border: 2px solid rgba(255,255,255,0.14); }
 .prep-right { flex: 1; min-width: 230px; }
 .prep-info { font-size: 14px; color: #c3d2f2; font-weight: 700; margin-bottom: 10px; min-height: 20px; }
 .prep-info b { color: #fff; }

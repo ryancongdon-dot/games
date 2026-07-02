@@ -126,10 +126,10 @@ const woodStrip = new THREE.Mesh(new THREE.BoxGeometry(FLOOR.x1 - FLOOR.x0, 0.42
   new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.6 }));
 woodStrip.position.set(0, -0.19, -4.6); woodStrip.receiveShadow = true; scene.add(woodStrip);
 
-// walls + wainscot + ceiling
-box(FLOOR.x1 - FLOOR.x0, 6, 0.4, 0x2c1f3a, 0, 2.8, FLOOR.z0 - 0.2, { noShadow: true });
-box(0.4, 6, FLOOR.z1 - FLOOR.z0, 0x241a30, FLOOR.x0 - 0.2, 2.8, 0, { noShadow: true });
-box(0.4, 6, FLOOR.z1 - FLOOR.z0, 0x241a30, FLOOR.x1 + 0.2, 2.8, 0, { noShadow: true });
+// walls + wainscot + ceiling (walls run tall so the camera never sees black past them)
+box(FLOOR.x1 - FLOOR.x0, 10, 0.4, 0x2c1f3a, 0, 5, FLOOR.z0 - 0.2, { noShadow: true });
+box(0.4, 10, FLOOR.z1 - FLOOR.z0, 0x241a30, FLOOR.x0 - 0.2, 5, 0, { noShadow: true });
+box(0.4, 10, FLOOR.z1 - FLOOR.z0, 0x241a30, FLOOR.x1 + 0.2, 5, 0, { noShadow: true });
 box(FLOOR.x1 - FLOOR.x0, 1.0, 0.14, 0x1a1226, 0, 0.5, FLOOR.z0 + 0.08, { noShadow: true });   // wainscot
 const ceil = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR.x1 - FLOOR.x0, FLOOR.z1 - FLOOR.z0),
   new THREE.MeshStandardMaterial({ color: 0x191227, roughness: 1 }));
@@ -318,11 +318,12 @@ function bowlNight() {
   const n = L.beginNight();
   if (ST) ST.rivalBanter(n.opp, () => go('lanes.html')); else go('lanes.html');
 }
+// shopkeepers stand BEHIND their counters (nz); Gus greets out front
 const STATIONS = [
   { file: 'character-male-e',   x: -9,   name: 'Gus',  act: bowlNight, promptFor: 'gus' },
-  { file: 'character-female-b', x: -4.5, name: 'Rosa', act: () => go('pizza.html'),  prompt: 'Help the pizza rush' },
-  { file: 'character-male-c',   x: 0,    name: 'Mac',  act: () => go('arcade.html'), prompt: 'Fix the cabinets' },
-  { file: 'character-female-d', x: 4.5,  name: 'Sal',  act: () => go('proshop.html'), prompt: 'Browse the Pro Shop' },
+  { file: 'character-female-b', x: -4.9, nz: -4.0, name: 'Rosa', act: () => go('pizza.html'),  prompt: 'Help the pizza rush' },
+  { file: 'character-male-c',   x: 0,    nz: -4.0, name: 'Mac',  act: () => go('arcade.html'), prompt: 'Fix the cabinets' },
+  { file: 'character-female-d', x: 4.5,  nz: -4.0, name: 'Sal',  act: () => go('proshop.html'), prompt: 'Browse the Pro Shop' },
   { file: null,                 x: 9,    name: '',     act: () => showBoard(), prompt: 'Check the standings' },
 ];
 const npcZ = -2.2;
@@ -350,7 +351,7 @@ async function loadCast() {
   $('loading').classList.add('hidden');
   for (const s of STATIONS) {
     if (!s.file) { npcs.push({ station: s, root: { position: new THREE.Vector3(s.x, 0, npcZ) } }); continue; }
-    const ch = await loadChar(s.file, s.x, npcZ, 0);
+    const ch = await loadChar(s.file, s.x, s.nz != null ? s.nz : npcZ, 0);
     setAction(ch, ch.actions['idle'] ? 'idle' : 'static', 0);
     npcs.push({ station: s, char: ch, root: ch.root });
   }
@@ -359,8 +360,8 @@ async function loadCast() {
     const ch = await loadChar(WANDER_FILES[i], -8 + i * 7, 2.5 + i, Math.PI);
     wanderers.push({ char: ch, state: 'idle', t: 1 + i, tx: 0, tz: 0 });
   }
-  // props from the Starter Kit (MIT): coin over the pro shop; champion flag
-  loadProp('coin', 4.5, 2.4, -4.2, 1.2);
+  // props from the Starter Kit (MIT): coin over the pro-shop counter; champion flag
+  loadProp('coin', 5.6, 1.7, -3.2, 1.1);
   if (L && L.done && L.rank() === 1) loadProp('flag', 9.9, 0, -5.2, 1.4);
 }
 
@@ -370,6 +371,25 @@ function pushOut(pos) {
     const dx = pos.x - t.x, dz = pos.z - t.z;
     const d = Math.hypot(dx, dz), R = 1.35;
     if (d > 0.001 && d < R) { pos.x = t.x + (dx / d) * R; pos.z = t.z + (dz / d) * R; }
+  }
+}
+// …and out of each other (wanderers vs wanderers vs player)
+function separateWalkers() {
+  const bodies = wanderers.map((w) => w.char.root && w.char.root.position).filter(Boolean);
+  if (player && player.root) bodies.push(player.root.position);
+  const R = 0.95;
+  for (let i = 0; i < bodies.length; i++) {
+    for (let j = i + 1; j < bodies.length; j++) {
+      const a = bodies[i], b = bodies[j];
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 0.001 && d < R) {
+        const push = (R - d) / 2, nx = dx / d, nz = dz / d;
+        // never shove the player — move the wanderers around them instead
+        if (b === (player && player.root.position)) { a.x -= nx * push * 2; a.z -= nz * push * 2; }
+        else { a.x -= nx * push; a.z -= nz * push; b.x += nx * push; b.z += nz * push; }
+      }
+    }
   }
 }
 
@@ -430,7 +450,7 @@ function animate() {
       setAction(player, player.actions['walk'] ? 'walk' : 'idle');
     } else setAction(player, player.actions['idle'] ? 'idle' : 'static');
 
-    near = null; let best = 2.6;
+    near = null; let best = 3.4;   // shopkeepers stand behind counters, so reach further
     for (const n of npcs) { const d = Math.hypot(n.root.position.x - player.root.position.x, n.root.position.z - player.root.position.z); if (d < best) { best = d; near = n; } }
     updatePrompt();
   }
@@ -461,6 +481,7 @@ function animate() {
     }
     if (w.char.mixer) w.char.mixer.update(dt);
   }
+  separateWalkers();
 
   // camera follows the player
   if (player) {
@@ -470,7 +491,7 @@ function animate() {
   }
   for (const n of npcs) if (n.char && n.char.mixer) n.char.mixer.update(dt);
   if (player && player.mixer) player.mixer.update(dt);
-  if (coin) { coin.rotation.y += dt * 2.2; coin.position.y = 2.4 + Math.sin(clock.elapsedTime * 2) * 0.08; }
+  if (coin) { coin.rotation.y += dt * 2.2; coin.position.y = 1.7 + Math.sin(clock.elapsedTime * 2) * 0.08; }
   // arcade screens flicker through hues
   for (let i = 0; i < arcadeScreens.length; i++) {
     arcadeScreens[i].emissive.setHSL((clock.elapsedTime * 0.15 + i * 0.4) % 1, 0.85, 0.55);

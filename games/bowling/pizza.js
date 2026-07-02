@@ -13,7 +13,8 @@
     { id: 'olive', icon: '🫒' }, { id: 'bacon', icon: '🥓' }, { id: 'pine', icon: '🍍' },
   ];
   const iconOf = (id) => (TOPPINGS.find((t) => t.id === id) || {}).icon || '?';
-  const FACES = ['🧑', '👩', '👨', '🧓', '👵', '🧔', '👱‍♀️', '👨‍🦰', '👩‍🦱', '🧑‍🦲', '👲', '🧕', '👳', '👩‍🦰'];
+  // customers are drawn characters (sprites.js), not emoji
+  const CHAR_IDS = ['vince', 'doreen', 'rex', 'mimi', 'kap', 'benny', 'clerk', 'you', 'mac'];
 
   // slots that cover the pie so a topping looks like a full layer, not 3 floaters
   const SLOTS = (() => {
@@ -48,7 +49,7 @@
     const count = clamp(1 + Math.floor(S.served / 4), 1, 3);
     const pool = TOPPINGS.map((t) => t.id).sort(() => Math.random() - 0.5);
     const pat = Math.max(11000, PATIENCE_BASE - S.served * 300);
-    S.seats[i] = { face: FACES[Math.floor(Math.random() * FACES.length)], order: pool.slice(0, count), patience: pat, patienceMax: pat, state: 'wait', say: '' };
+    S.seats[i] = { charId: CHAR_IDS[Math.floor(Math.random() * CHAR_IDS.length)], order: pool.slice(0, count), patience: pat, patienceMax: pat, state: 'wait', say: '' };
     renderSeats();
   }
 
@@ -60,13 +61,19 @@
         ? `<div class="bubble say">${s.say}</div>`
         : `<div class="bubble"><span class="b-tops">${s.order.map(iconOf).join('')}</span><div class="b-pat"><i style="width:${patPct}%"></i></div></div>`;
       const cls = 'seat occupied' + (i === S.active ? ' active' : '') + (s.state === 'served' ? ' served' : '');
-      return `<div class="${cls}" data-seat="${i}">${bubble}<div class="person">${s.face}</div></div>`;
+      return `<div class="${cls}" data-seat="${i}">${bubble}<canvas class="person-cv" width="84" height="120"></canvas></div>`;
     }).join('');
-    // cache patience fills + bind taps
+    // draw the customers, cache patience fills, bind taps
     $('seats').querySelectorAll('.seat').forEach((el) => {
       const i = +el.getAttribute('data-seat');
       const s = S.seats[i];
-      if (s) { s.fill = el.querySelector('.b-pat > i') || null; }
+      if (s) {
+        s.fill = el.querySelector('.b-pat > i') || null;
+        const cv = el.querySelector('.person-cv');
+        if (cv && window.Sprites) {
+          Sprites.drawChar(cv.getContext('2d'), 42, 114, 4.4, s.charId, 0, false, 1);
+        }
+      }
       if (s && s.state === 'wait') el.addEventListener('click', () => selectSeat(i));
     });
   }
@@ -236,6 +243,11 @@
   }
 
   function boot() {
+    // Rosa's drawn portrait as the cook (falls back to the emoji if absent)
+    if (window.Sprites) {
+      const p = Sprites.facePortrait('rosa', 52);
+      if (p) { const el = $('cook'); el.textContent = ''; el.appendChild(p); }
+    }
     renderToppingButtons();
     renderSeats(); updateHud(); renderPrep();
     $('btn-main').addEventListener('click', onMain);
