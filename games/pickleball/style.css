@@ -41,11 +41,40 @@ body {
 }
 #banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
-#shotPrompt {
-  position: absolute; bottom: calc(env(safe-area-inset-bottom) + 18px); left: 50%;
-  transform: translateX(-50%); display: flex; gap: 10px; flex-wrap: wrap;
-  justify-content: center; max-width: 92vw;
+.hint {
+  position: absolute; bottom: calc(env(safe-area-inset-bottom) + 16px); left: 50%;
+  transform: translateX(-50%); text-align: center; color: #dfe9ff; font-size: 14px;
+  font-weight: 600; letter-spacing: 0.3px; padding: 8px 16px; border-radius: 999px;
+  background: rgba(10,18,34,0.55); backdrop-filter: blur(6px); opacity: 0;
+  transition: opacity 0.3s ease; max-width: 92vw;
 }
+.hint.show { opacity: 1; }
+
+.iconbtn {
+  position: absolute; top: calc(env(safe-area-inset-top) + 14px);
+  pointer-events: auto; cursor: pointer; width: 42px; height: 42px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14); background: rgba(10,18,34,0.6);
+  backdrop-filter: blur(6px); color: #eef4ff; font-size: 20px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+#btnSound { right: 66px; }
+#btnPause { right: 14px; }
+.iconbtn:hover { background: rgba(30,44,74,0.7); }
+
+/* difficulty segmented control */
+.seg { display: inline-flex; gap: 4px; padding: 5px; margin: 0 0 22px;
+  background: rgba(0,0,0,0.28); border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); }
+.segbtn { pointer-events: auto; cursor: pointer; border: none; background: transparent; color: #9fb0cc;
+  font-size: 14px; font-weight: 800; letter-spacing: 0.5px; padding: 9px 16px; border-radius: 10px; transition: all 0.12s ease; }
+.segbtn.on { background: linear-gradient(180deg, #3d7bd6, #2a5db0); color: #fff; box-shadow: 0 6px 16px rgba(42,93,176,0.5); }
+
+.controls-note { margin-top: 20px; display: flex; flex-direction: column; gap: 6px;
+  color: #8698ba; font-size: 12.5px; line-height: 1.5; }
+.mtitle { font-size: clamp(28px, 7vw, 44px); font-weight: 900; margin-bottom: 22px;
+  background: linear-gradient(90deg, #5ad2ff, #ffd84d); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.18); box-shadow: none; }
+.menu-card .btn { display: block; width: 100%; margin: 10px 0 0; }
+.menu-card .btn:first-of-type { margin-top: 0; }
 
 /* ---------- overlays / menu ---------- */
 .overlay {

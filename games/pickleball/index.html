@@ -24,8 +24,10 @@
           <span class="tname">CPU</span>
         </div>
       </div>
+      <button id="btnSound" class="iconbtn" title="Sound">🔊</button>
+      <button id="btnPause" class="iconbtn" title="Pause">⏸</button>
       <div id="banner"></div>
-      <div id="shotPrompt"></div>
+      <div id="hint" class="hint"></div>
     </div>
 
     <!-- Title menu -->
@@ -33,8 +35,37 @@
       <div class="menu-card">
         <h1 class="logo">KITCHEN<span>KINGS</span></h1>
         <p class="tag">Doubles pickleball · you + a partner vs the CPU</p>
+        <div class="seg" id="diffSeg" role="group" aria-label="Difficulty">
+          <button class="segbtn" data-diff="rookie">Rookie</button>
+          <button class="segbtn on" data-diff="pro">Pro</button>
+          <button class="segbtn" data-diff="champion">Champion</button>
+        </div>
         <button class="btn primary" id="btnPlay">Play</button>
+        <div class="controls-note">
+          <span>⌨️ WASD move · J drive · K dink · L lob · I smash · Space serve · Esc pause</span>
+          <span>🎮 Left stick move · A drive · B dink · Y lob · X smash · Start pause</span>
+        </div>
         <div class="loading" id="loading">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Pause -->
+    <div id="pause" class="overlay hidden">
+      <div class="menu-card">
+        <h2 class="mtitle">Paused</h2>
+        <button class="btn primary" id="btnResume">Resume</button>
+        <button class="btn" id="btnSound2">Sound: On</button>
+        <button class="btn ghost" id="btnQuit">Quit to title</button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="overlay hidden">
+      <div class="menu-card">
+        <h2 class="mtitle" id="resultTitle">Match over</h2>
+        <p class="tag" id="resultScore"></p>
+        <button class="btn primary" id="btnRematch">Rematch</button>
+        <button class="btn ghost" id="btnMenu">Back to title</button>
       </div>
     </div>
   </div>

@@ -33,6 +33,34 @@ unlock thresholds in `THEMES`. Scene/physics/render knobs (cabinet size, grab
 reach `GRASP`, heap size `PILE_TARGET`, and the `BLOOM` settings) live in
 [`scene3d.js`](games/claw-machine/scene3d.js).
 
+### 🥒 Kitchen Kings — `games/pickleball/`
+**Real 3D doubles pickleball** (WebGL) with a vibrant outdoor court, a
+toy-diorama art style (chibi players, soft shadows, gentle bloom), and a
+proper pickleball rulebook. You + an AI partner take on a CPU pair.
+
+**Faithful rules** — traditional **side-out scoring** (only the serving team
+scores; correct server-number rotation and even/odd court positioning), the
+**two-bounce rule**, the **kitchen** (non-volley zone), diagonal serves, and
+faults for out/net/short serve. Games to **11, win by 2**.
+
+**Controls** — plays with **gamepad** or **mouse & keyboard**:
+- Keyboard: **WASD** move · **J** drive · **K** dink · **L** lob · **I** smash
+  · **Space** serve · **Esc** pause · mouse aims the reticle.
+- Gamepad: **left stick** move · **A** drive · **B** dink · **Y** lob ·
+  **X** smash · **Start** pause · right stick aims.
+- Control auto-switches to whichever teammate is best placed for the ball
+  (highlighted by a ring); manual switch on **E** / bumpers.
+
+**Difficulty** — Rookie / Pro / Champion tune the CPU's reaction time, speed,
+aim, and shot selection. Sound and difficulty are saved (localStorage).
+
+**Tuning** — ball feel lives in `TUNE` at the top of
+[`games/pickleball/physics.js`](games/pickleball/physics.js) (gravity, bounce,
+drag, spin); AI tiers in `TIERS` in
+[`ai.js`](games/pickleball/ai.js); scoring/court constants in
+[`rules.js`](games/pickleball/rules.js). The referee is pure, unit-tested logic
+separate from rendering (`court3d.js`) and input (`input.js`).
+
 ## Run it
 Just open `index.html` in a browser, or serve the folder:
 

@@ -428,6 +428,27 @@ const Court = (() => {
 
   function ballVisible(v) { if (ball) { ball.mesh.visible = v; ball.blob.visible = v; trailLine.visible = v; } }
 
+  // ---- aim reticle (target marker on the court) ----
+  let reticle;
+  function buildReticle() {
+    reticle = new THREE.Group();
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.17, 0.25, 28),
+      new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; reticle.add(ring);
+    const dot = new THREE.Mesh(new THREE.CircleGeometry(0.055, 16),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
+    dot.rotation.x = -Math.PI / 2; reticle.add(dot);
+    reticle.position.y = 0.03; reticle.visible = false;
+    scene.add(reticle);
+  }
+  function setReticle(x, z, show) {
+    if (!reticle) return;
+    reticle.visible = show;
+    reticle.position.x = x; reticle.position.z = z;
+    const s = 0.9 + 0.12 * Math.sin(clock.t * 7);
+    reticle.scale.setScalar(s);
+  }
+
   // ---------------------------------------------------------------------------
   // Players (stylized low-poly figures with paddles)
   // ---------------------------------------------------------------------------
@@ -518,6 +539,10 @@ const Court = (() => {
     P.group.rotation.y = P.facing;
   }
   function setControlled(i, on) { const P = players[i]; if (P) P.ring.visible = on; }
+  function clearPlayers() {
+    for (const P of players) scene.remove(P.group);
+    players.length = 0;
+  }
   function triggerSwing(i) { const P = players[i]; if (P) P.swingT = 1; }
   function playerCount() { return players.length; }
 
@@ -577,6 +602,7 @@ const Court = (() => {
     buildNet();
     buildSurroundings();
     buildBall();
+    buildReticle();
     initEnvironment();
     initPost();
 
@@ -606,8 +632,8 @@ const Court = (() => {
   return {
     init, resize, update, shake,
     DIMS, BALL_R,
-    setBall, ballVisible,
-    makePlayer, setPlayer, setControlled, triggerSwing, playerCount,
+    setBall, ballVisible, setReticle,
+    makePlayer, setPlayer, setControlled, triggerSwing, playerCount, clearPlayers,
     get scene() { return scene; },
     get camera() { return camera; },
     get renderer() { return renderer; },

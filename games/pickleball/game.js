@@ -47,17 +47,64 @@
   }
 
   function startMatch() {
-    if (G.started) return;
-    G.started = true;
     el('menu').classList.add('hidden');
+    el('results').classList.add('hidden');
     el('hud').classList.remove('hidden');
-    GameAudio.unlock(); GameAudio.startMusic();
+    if (!G.audioUnlocked) { GameAudio.unlock(); GameAudio.startMusic(); G.audioUnlocked = true; }
+    beginMatch();
+    G.started = true;
+  }
 
+  function beginMatch() {
+    Court.clearPlayers();
+    G.players = [];
     spawnPlayer(0); spawnPlayer(0); spawnPlayer(1); spawnPlayer(1);
-    G.ball = Physics.make();
+    if (!G.ball) G.ball = Physics.make();
     AI.setDifficulty(G.difficulty || 'pro');
     Rules.reset(0);
+    G.paused = false; setPauseUI(false);
     setupServe();
+  }
+
+  function setPaused(p) { if (!G.started || G.phase === 'over') return; G.paused = p; setPauseUI(p); }
+  function setPauseUI(p) { el('pause').classList.toggle('hidden', !p); }
+  function quitToTitle() {
+    G.started = false; G.paused = false;
+    setPauseUI(false); el('results').classList.add('hidden');
+    el('hud').classList.add('hidden'); el('menu').classList.remove('hidden');
+    Court.ballVisible(false);
+  }
+  function showResults(win, scores) {
+    el('resultTitle').textContent = win ? 'You win! 🏆' : 'CPU wins';
+    el('resultScore').textContent = `Final: ${scores[0]} – ${scores[1]}`;
+    el('results').classList.remove('hidden');
+  }
+
+  // ---- sound + difficulty persistence ----
+  function loadPrefs() {
+    G.difficulty = localStorage.getItem('kk_diff') || 'pro';
+    const snd = localStorage.getItem('kk_sound');
+    G.sound = snd === null ? true : snd === '1';
+    GameAudio.setEnabled(G.sound);
+    reflectSoundUI();
+    document.querySelectorAll('.segbtn').forEach(b => b.classList.toggle('on', b.dataset.diff === G.difficulty));
+  }
+  function setDifficulty(name) { G.difficulty = name; localStorage.setItem('kk_diff', name); AI.setDifficulty(name); }
+  function toggleSound() {
+    G.sound = !G.sound; localStorage.setItem('kk_sound', G.sound ? '1' : '0');
+    GameAudio.setEnabled(G.sound);
+    if (G.sound && G.audioUnlocked) GameAudio.startMusic();
+    reflectSoundUI();
+  }
+  function reflectSoundUI() {
+    el('btnSound').textContent = G.sound ? '🔊' : '🔇';
+    if (el('btnSound2')) el('btnSound2').textContent = 'Sound: ' + (G.sound ? 'On' : 'Off');
+  }
+
+  let hintTimer = null;
+  function showHint(text, ms = 2600) {
+    const h = el('hint'); h.textContent = text; h.classList.add('show');
+    clearTimeout(hintTimer); hintTimer = setTimeout(() => h.classList.remove('show'), ms);
   }
 
   // ---- HUD ----
@@ -88,7 +135,11 @@
     holdBallAtServer();
     updateHUD();
     G.cpuServeTimer = (inf.servingTeam === 1) ? 0.9 : 0;
-    if (inf.servingTeam === 0) banner('Your serve', 900);
+    Court.ballVisible(true);
+    if (inf.servingTeam === 0) {
+      banner('Your serve', 900);
+      showHint(Input.usingPad() ? 'Press A to serve' : 'Press Space to serve', 2400);
+    }
   }
 
   function nearestNearPlayerToBall() {
@@ -183,9 +234,10 @@
     updateHUD();
     if (res.matchOver) {
       const win = res.matchWinner === 0;
-      banner(win ? 'YOU WIN! 🏆' : 'CPU WINS', 3000);
+      banner(win ? 'YOU WIN! 🏆' : 'CPU WINS', 2600);
       GameAudio.play(win ? 'win' : 'lose');
       G.phase = 'over';
+      setTimeout(() => showResults(win, res.scores), 1900);
       return;
     }
     let msg;
@@ -236,10 +288,23 @@
     }
   }
 
+  // reticle: show the human's aim target
+  function updateReticle() {
+    if (G.phase === 'serve' && Rules.info().servingTeam === 0) {
+      const { cx, cz, b } = serveTargetCenter();
+      let tx = cx;
+      if (Input.pointer().active && !Input.usingPad()) tx = clamp(G.aim.x, Math.min(b.x0, b.x1) + 0.3, Math.max(b.x0, b.x1) - 0.3);
+      else { const a = Input.aimStick(); if (a.mag > 0.2) tx = clamp(cx + a.x * (D().HALF_W * 0.4), Math.min(b.x0, b.x1) + 0.3, Math.max(b.x0, b.x1) - 0.3); }
+      Court.setReticle(tx, cz, true);
+    } else if (G.phase === 'rally') {
+      Court.setReticle(G.aim.x, G.aim.z, true);
+    } else {
+      Court.setReticle(0, 0, false);
+    }
+  }
+
   // ---- main step ----
   function step(dt) {
-    Input.beginFrame();
-    if (Input.pressed('pause')) { /* pause menu in M6 */ }
     updateControl(dt);
     resolveAim();
     moveControlled(dt);
@@ -279,6 +344,7 @@
       }
     }
 
+    updateReticle();
     Court.setBall(b.p.x, b.p.y, b.p.z);
   }
 
@@ -287,14 +353,31 @@
   function frame(now) {
     const dt = Math.min(0.05, (now - G.last) / 1000 || 0);
     G.last = now;
-    if (G.started && G.phase !== 'over') step(dt);
+    Input.beginFrame();
+    if (G.started && Input.pressed('pause')) setPaused(!G.paused);
+    if (G.started && !G.paused && G.phase !== 'over') step(dt);
     Court.update(dt);
     requestAnimationFrame(frame);
   }
 
   // headless/testing: advance game logic without waiting on the render loop
-  function fastForward(sec) { const n = Math.round(sec * 60); for (let i = 0; i < n && G.phase !== 'over'; i++) step(1 / 60); }
+  function fastForward(sec) { const n = Math.round(sec * 60); for (let i = 0; i < n && G.phase !== 'over'; i++) { Input.beginFrame(); step(1 / 60); } }
 
-  window.addEventListener('DOMContentLoaded', () => { boot(); el('btnPlay').addEventListener('click', startMatch); });
-  window.PB = { G, start: startMatch, Rules, fastForward };
+  function wireUI() {
+    el('btnPlay').addEventListener('click', startMatch);
+    document.querySelectorAll('.segbtn').forEach(b => b.addEventListener('click', () => {
+      document.querySelectorAll('.segbtn').forEach(x => x.classList.remove('on'));
+      b.classList.add('on'); setDifficulty(b.dataset.diff); GameAudio.play('ui');
+    }));
+    el('btnSound').addEventListener('click', toggleSound);
+    el('btnSound2').addEventListener('click', toggleSound);
+    el('btnPause').addEventListener('click', () => setPaused(true));
+    el('btnResume').addEventListener('click', () => setPaused(false));
+    el('btnQuit').addEventListener('click', quitToTitle);
+    el('btnRematch').addEventListener('click', startMatch);
+    el('btnMenu').addEventListener('click', quitToTitle);
+  }
+
+  window.addEventListener('DOMContentLoaded', () => { boot(); loadPrefs(); wireUI(); });
+  window.PB = { G, start: startMatch, Rules, fastForward, setPaused };
 })();
