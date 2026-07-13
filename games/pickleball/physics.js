@@ -111,18 +111,21 @@ const Physics = (() => {
   // Solve a launch velocity that sends the ball from `from` to ground `target`
   // with an arc chosen by shot `type`. Optionally add sidespin.
   // type: 'drive' | 'dink' | 'lob' | 'smash' | 'serve' | 'return'
-  const FLIGHT = { drive: 0.62, dink: 0.5, lob: 1.15, smash: 0.42, serve: 0.85, return: 0.72 };
-  const APEXBIAS = { drive: 0.35, dink: 0.28, lob: 1.4, smash: 0.1, serve: 0.55, return: 0.5 };
+  // Flight time sets the arc shape (longer = higher/slower). The vertical solve
+  // makes the ball actually LAND on target, so no apex fudge is needed — adding
+  // one would overshoot. Drag makes real landings fall a touch short (safe).
+  const FLIGHT = { drive: 0.66, dink: 0.52, lob: 1.2, smash: 0.44, serve: 0.9, return: 0.78 };
 
   function launch(b, from, target, type = 'drive', power = 1, spin = 0) {
     const t = (FLIGHT[type] || 0.7) / Math.max(0.5, power);
     b.p.x = from.x; b.p.y = from.y; b.p.z = from.z;
     b.v.x = (target.x - from.x) / t;
     b.v.z = (target.z - from.z) / t;
-    // vertical: parabola passing from.y -> r at time t
+    // vertical: parabola from `from.y` down to ground (r) exactly at time t
     b.v.y = (b.r - from.y + 0.5 * TUNE.g * t * t) / t;
-    // add apex bias for loft (helps clear the net for lobs/serves)
-    b.v.y += APEXBIAS[type] || 0;
+    // drag makes horizontal fall slightly short; nudge speed up to compensate
+    const dc = 1 + TUNE.drag * t * 0.5;
+    b.v.x *= dc; b.v.z *= dc;
     b.spin = spin;
     b.alive = true; b.rolling = false;
     b.bounces = 0;
