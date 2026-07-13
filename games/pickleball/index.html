@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#2f6fd0" />
+  <title>Kitchen Kings — Pickleball</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene"></canvas>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div id="scoreboard">
+        <div class="team home">
+          <span class="tname">YOU</span>
+          <span class="tscore" id="scoreHome">0</span>
+        </div>
+        <div class="callout" id="callout">0 – 0 – 2</div>
+        <div class="team away">
+          <span class="tscore" id="scoreAway">0</span>
+          <span class="tname">CPU</span>
+        </div>
+      </div>
+      <div id="banner"></div>
+      <div id="shotPrompt"></div>
+    </div>
+
+    <!-- Title menu -->
+    <div id="menu" class="overlay">
+      <div class="menu-card">
+        <h1 class="logo">KITCHEN<span>KINGS</span></h1>
+        <p class="tag">Doubles pickleball · you + a partner vs the CPU</p>
+        <button class="btn primary" id="btnPlay">Play</button>
+        <div class="loading" id="loading">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="court3d.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
