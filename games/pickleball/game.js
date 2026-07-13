@@ -55,6 +55,7 @@
 
     spawnPlayer(0); spawnPlayer(0); spawnPlayer(1); spawnPlayer(1);
     G.ball = Physics.make();
+    AI.setDifficulty(G.difficulty || 'pro');
     Rules.reset(0);
     setupServe();
   }
@@ -137,22 +138,34 @@
     Court.shake(0.05);
   }
 
-  // ---- player strike during a rally ----
-  function tryRallyStrike(type) {
-    const b = G.ball, c = G.players[G.control];
-    if (!b.alive || b.p.z <= 0) return;                 // only our (near) side
-    if (Math.hypot(b.p.x - c.pos.x, b.p.z - c.pos.z) > REACH || b.p.y > REACH_Y) return;
-    const high = b.p.y > 0.95;
-    let t = type; if (t === 'auto') t = high ? 'smash' : 'drive';
-    const res = Rules.hit(c.ci, { x: c.pos.x, z: c.pos.z });
-    Court.triggerSwing(c.ci);
-    if (res) { onRallyResult(res); return; }            // illegal strike (kitchen/two-bounce)
-    const target = { x: G.aim.x, z: t === 'dink' ? -1.4 : G.aim.z };
-    Physics.launch(b, { x: b.p.x, y: b.p.y, z: b.p.z }, target, t, 1, 0);
-    b.hitBy = c.ci;
+  // ---- shared strike used by both the human and the AI ----
+  function strikeBall(pIdx, type, target, spin = 0) {
+    const b = G.ball, p = G.players[pIdx];
+    let t = type; if (t === 'auto') t = b.p.y > 0.95 ? 'smash' : 'drive';
+    const res = Rules.hit(p.ci, { x: p.pos.x, z: p.pos.z });
+    Court.triggerSwing(p.ci);
+    if (res) { onRallyResult(res); return; }            // illegal strike (kitchen / two-bounce)
+    Physics.launch(b, { x: b.p.x, y: b.p.y, z: b.p.z }, target, t, 1, spin);
+    b.hitBy = p.ci;
     GameAudio.play(t === 'smash' ? 'smash' : t === 'dink' ? 'dink' : 'hit', { vel: 1, pan: panForX(b.p.x) });
     Court.shake(t === 'smash' ? 0.12 : 0.05);
   }
+
+  // human strike: near team, ball on near side, within reach
+  function tryRallyStrike(type) {
+    const b = G.ball, c = G.players[G.control];
+    if (!b.alive || c.team !== 0 || b.p.z <= 0) return;
+    if (Math.hypot(b.p.x - c.pos.x, b.p.z - c.pos.z) > REACH || b.p.y > REACH_Y) return;
+    let t = type; if (t === 'auto') t = b.p.y > 0.95 ? 'smash' : 'drive';
+    const target = { x: G.aim.x, z: t === 'dink' ? -1.4 : G.aim.z };
+    strikeBall(G.control, t, target);
+  }
+
+  const aiCtx = () => ({
+    ball: G.ball, players: G.players, dims: D(), control: G.control,
+    rules: Rules, predict: (b) => Physics.predictLanding(b),
+    strike: (i, type, target) => strikeBall(i, type, target),
+  });
 
   function requestedType() {
     if (Input.pressed('smash')) return 'smash';
@@ -236,6 +249,7 @@
       if (inf.servingTeam === 0) { if (requestedType()) doServe(false); }
       else { G.cpuServeTimer -= dt; if (G.cpuServeTimer <= 0) doServe(true); }
     } else if (G.phase === 'rally') {
+      AI.update(dt, aiCtx());
       const type = requestedType();
       if (type) tryRallyStrike(type);
     } else if (G.phase === 'dead') {

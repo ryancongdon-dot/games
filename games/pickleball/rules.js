@@ -237,6 +237,18 @@ const Rules = (() => {
 
   function nextServe() { S.phase = 'serve'; S.rally = null; return info(); }
 
+  // live rally snapshot for the AI (so it respects two-bounce + kitchen)
+  function rallyInfo() {
+    if (!S.rally || S.rally.over) return null;
+    const r = S.rally;
+    return {
+      shots: r.shots,
+      bounced: r.bouncedSinceCross,
+      side: r.side,                    // team whose half the ball is on
+      mustBounce: r.shots < 3,         // next shot (serve return / 3rd) must be off a bounce
+    };
+  }
+
   function callout() {
     // serving team score – receiving team score – server number
     const st = S.servingTeam, rt = st ^ 1;
@@ -245,7 +257,7 @@ const Rules = (() => {
 
   return {
     reset, info, positions, serveHit, hit, bounce, net, cross,
-    consumeResult, nextServe, callout,
+    consumeResult, nextServe, callout, rallyInfo,
     get cfg() { return cfg; },
     // exposed for tests
     _state: () => S, teamOf, partnerOf, serveBox, receiver,

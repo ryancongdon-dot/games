@@ -235,7 +235,7 @@ const Court = (() => {
       stand.add(riser);
     }
     stand.position.set(HALF_W + 3.4, 0, -1.0);
-    stand.rotation.y = -Math.PI / 2;
+    stand.rotation.y = Math.PI / 2;   // rows ascend away from the court; seats face in
     scene.add(stand);
 
     buildSky();
