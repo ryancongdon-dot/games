@@ -375,6 +375,169 @@ const Court = (() => {
   }
 
   // ---------------------------------------------------------------------------
+  // Ball (with motion trail)
+  // ---------------------------------------------------------------------------
+  const BALL_R = 0.055;
+  const TRAIL_N = 16;
+  let trailPos, trailGeo, trailLine;
+
+  function buildBall() {
+    const g = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 20, 16), M.ball);
+    g.castShadow = true;
+    g.position.set(0, BALL_R, HALF_L * 0.6);
+    scene.add(g);
+
+    // contact shadow blob (readability against the surface)
+    const blob = new THREE.Mesh(
+      new THREE.CircleGeometry(BALL_R * 1.6, 20),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 }));
+    blob.rotation.x = -Math.PI / 2;
+    blob.position.y = 0.015;
+    scene.add(blob);
+
+    // trail
+    trailPos = new Float32Array(TRAIL_N * 3);
+    trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+    trailLine = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({
+      color: 0xfff2a8, transparent: true, opacity: 0.5 }));
+    trailLine.frustumCulled = false;
+    scene.add(trailLine);
+
+    ball = { mesh: g, blob, hist: [] };
+    for (let i = 0; i < TRAIL_N; i++) ball.hist.push(new THREE.Vector3(0, BALL_R, HALF_L * 0.6));
+  }
+
+  function setBall(x, y, z) {
+    if (!ball) return;
+    ball.mesh.position.set(x, y, z);
+    ball.blob.position.set(x, 0.015, z);
+    const sc = clamp(1 - y * 0.16, 0.4, 1);      // shadow shrinks as ball rises
+    ball.blob.scale.setScalar(sc);
+    ball.blob.material.opacity = 0.3 * sc;
+    // push history
+    ball.hist.pop();
+    ball.hist.unshift(new THREE.Vector3(x, y, z));
+    for (let i = 0; i < TRAIL_N; i++) {
+      trailPos[i * 3] = ball.hist[i].x;
+      trailPos[i * 3 + 1] = ball.hist[i].y;
+      trailPos[i * 3 + 2] = ball.hist[i].z;
+    }
+    trailGeo.attributes.position.needsUpdate = true;
+  }
+
+  function ballVisible(v) { if (ball) { ball.mesh.visible = v; ball.blob.visible = v; trailLine.visible = v; } }
+
+  // ---------------------------------------------------------------------------
+  // Players (stylized low-poly figures with paddles)
+  // ---------------------------------------------------------------------------
+  const TEAM_COL = {
+    0: [0x2f6fd0, 0x1f4e94],   // near team — blues
+    1: [0xe0552f, 0xb23a20],   // far team — reds
+  };
+  const PARTNER_TINT = 0x38b6ff;
+
+  function makePlayer(team, idx) {
+    const g = new THREE.Group();
+    const [jersey, short] = TEAM_COL[team];
+    const skin = 0xe8b48a;
+    const jerseyMat = new THREE.MeshStandardMaterial({ color: jersey, roughness: 0.7 });
+    const shortMat = new THREE.MeshStandardMaterial({ color: short, roughness: 0.75 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.7 });
+
+    // Chibi / toy-diorama proportions (Link's Awakening vibe): big rounded head,
+    // short stubby body, smooth glossy forms.
+    jerseyMat.roughness = 0.55; shortMat.roughness = 0.6; skinMat.roughness = 0.6;
+    // torso
+    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.19, 0.2, 6, 14), jerseyMat);
+    torso.position.y = 0.72; torso.castShadow = true; g.add(torso);
+    // hips/shorts
+    const hips = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.1, 5, 14), shortMat);
+    hips.position.y = 0.52; hips.castShadow = true; g.add(hips);
+    // legs (short + stubby)
+    for (const s of [-1, 1]) {
+      const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.26, 4, 8), skinMat);
+      leg.position.set(s * 0.1, 0.24, 0); leg.castShadow = true; g.add(leg);
+      const shoe = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshStandardMaterial({ color: 0xf4f6fb, roughness: 0.5 }));
+      shoe.scale.set(1, 0.7, 1.3); shoe.position.set(s * 0.1, 0.08, 0.03); shoe.castShadow = true; g.add(shoe);
+    }
+    // big head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 18), skinMat);
+    head.position.y = 1.06; head.castShadow = true; g.add(head);
+    // cap crown + brim
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.205, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), jerseyMat);
+    cap.position.y = 1.09; cap.castShadow = true; g.add(cap);
+    const brim = new THREE.Mesh(new THREE.CircleGeometry(0.19, 18, 0, Math.PI), jerseyMat);
+    brim.rotation.x = -Math.PI / 2; brim.position.set(0, 1.05, 0.16); g.add(brim);
+    // simple face dots (eyes) so they read facing forward
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.4 });
+    for (const s of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), eyeMat);
+      eye.position.set(s * 0.07, 1.05, 0.185); g.add(eye);
+    }
+
+    // arm + paddle (right side), pivots so we can animate a swing
+    const armPivot = new THREE.Group();
+    armPivot.position.set(0.2, 0.82, 0);
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.3, 4, 8), skinMat);
+    arm.position.set(0.0, -0.12, 0.08); arm.rotation.x = 0.6; arm.castShadow = true; armPivot.add(arm);
+    const paddle = new THREE.Group();
+    const face = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.02, 20),
+      new THREE.MeshStandardMaterial({ color: team ? 0x222833 : 0x14324f, roughness: 0.5, metalness: 0.2 }));
+    face.rotation.z = Math.PI / 2; face.castShadow = true; paddle.add(face);
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.14, 8),
+      new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 }));
+    handle.position.set(0, -0.16, 0); paddle.add(handle);
+    paddle.position.set(0.02, -0.28, 0.16);
+    paddle.rotation.x = 0.5;
+    armPivot.add(paddle);
+    g.add(armPivot);
+
+    // control highlight ring
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.44, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.9, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; ring.visible = false; g.add(ring);
+
+    // contact shadow blob
+    const blob = new THREE.Mesh(new THREE.CircleGeometry(0.3, 20),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22 }));
+    blob.rotation.x = -Math.PI / 2; blob.position.y = 0.014; g.add(blob);
+
+    if (team === 0 && idx === 1) { jerseyMat.color.setHex(PARTNER_TINT); }
+
+    scene.add(g);
+    const P = { group: g, team, idx, ring, armPivot, swingT: 0, facing: team === 0 ? Math.PI : 0 };
+    players.push(P);
+    return players.length - 1;
+  }
+
+  function setPlayer(i, x, z, facing) {
+    const P = players[i]; if (!P) return;
+    P.group.position.set(x, 0, z);
+    if (facing != null) { P.facing = facing; }
+    P.group.rotation.y = P.facing;
+  }
+  function setControlled(i, on) { const P = players[i]; if (P) P.ring.visible = on; }
+  function triggerSwing(i) { const P = players[i]; if (P) P.swingT = 1; }
+  function playerCount() { return players.length; }
+
+  function updatePlayers(dt) {
+    for (const P of players) {
+      // swing animation: sweep the arm/paddle forward then ease back
+      if (P.swingT > 0) {
+        P.swingT = Math.max(0, P.swingT - dt * 4.5);
+        const s = P.swingT;
+        P.armPivot.rotation.y = -Math.sin((1 - s) * Math.PI) * 1.9;
+        P.armPivot.rotation.x = -Math.sin((1 - s) * Math.PI) * 0.5;
+      }
+      // pulse the control ring
+      if (P.ring.visible) {
+        P.ring.material.opacity = 0.55 + 0.35 * Math.sin(clock.t * 6);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Camera
   // ---------------------------------------------------------------------------
   function updateCamera(dt) {
@@ -413,6 +576,7 @@ const Court = (() => {
     buildCourt();
     buildNet();
     buildSurroundings();
+    buildBall();
     initEnvironment();
     initPost();
 
@@ -432,6 +596,7 @@ const Court = (() => {
 
   function update(dt) {
     clock.t += dt;
+    updatePlayers(dt);
     updateCamera(dt);
     renderPost();
   }
@@ -440,7 +605,9 @@ const Court = (() => {
 
   return {
     init, resize, update, shake,
-    DIMS,
+    DIMS, BALL_R,
+    setBall, ballVisible,
+    makePlayer, setPlayer, setControlled, triggerSwing, playerCount,
     get scene() { return scene; },
     get camera() { return camera; },
     get renderer() { return renderer; },
