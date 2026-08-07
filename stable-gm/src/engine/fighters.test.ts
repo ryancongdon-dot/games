@@ -88,8 +88,22 @@ describe('fighter data integrity', () => {
   it('carries provenance on every record', () => {
     for (const f of FIGHTERS) {
       expect(f.src, `${f.id}: missing src`).toBeTruthy();
-      expect(f.verified, `${f.id}: missing verified`).toMatch(/^\d{4}-\d{2}$/);
       expect(['high', 'medium', 'low']).toContain(f.confidence);
+    }
+  });
+
+  it('never claims a source without an actual verification date', () => {
+    // The failure this guards against: labelling a record 'BoxRec' when nobody
+    // ever opened BoxRec. Either say where it came from and when it was
+    // checked, or admit it is unverified model recall.
+    for (const f of FIGHTERS) {
+      if (f.src === 'model-recall') {
+        expect(f.verified, `${f.id}: model-recall must not claim a check`).toBeUndefined();
+      } else {
+        expect(f.verified, `${f.id}: cites ${f.src} but no verified date`).toMatch(
+          /^\d{4}-\d{2}$/,
+        );
+      }
     }
   });
 

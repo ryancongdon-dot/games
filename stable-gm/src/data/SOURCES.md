@@ -3,6 +3,30 @@
 The records in `fighters.ts` are factual claims about real people. Treat them as data with a
 citation, not as game balance knobs.
 
+## ⚠️ Most of this data is unverified
+
+**77 of the 80 records carry `src: 'model-recall'`.** That means the numbers were written from an
+AI model's training knowledge and have never been checked against a source. They are plausible and
+mostly correct, but they are not citations.
+
+This file originally labelled every record `src: 'BoxRec', verified: '2026-08'`, which was false —
+BoxRec was never consulted. That has been corrected. A spot check of three fighters found:
+
+| Fighter | Model recall | Actual | |
+| --- | --- | --- | --- |
+| Éder Jofre | 72-2-4 (50 KO) | 72-2-4 (50 KO) | ✅ |
+| Carlos Zárate | 66-4 (63 KO) | 66-4 (63 KO) | ✅ |
+| Jimmy Wilde | 132-3-2 (99 KO) | 132-4-1 (98 KO) per BoxRec | ❌ corrected |
+
+So: roughly right, individually unreliable. **Verifying records one at a time — replacing
+`'model-recall'` with a real source and a `verified` date — is the highest-value work on this file.**
+`fighters.test.ts` enforces that a record naming a source must also carry a verification date, so
+the label can't drift back into fiction.
+
+Note that `confidence` is a *different* axis. It describes whether sources agree with each other,
+not whether we checked one. A record can be verified and still `confidence: 'low'` (Jimmy Wilde), or
+unverified and `confidence: 'high'`.
+
 ## Counting conventions
 
 Boxing ledgers differ between sources mainly because of how they count edge cases. This dataset

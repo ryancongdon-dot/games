@@ -96,6 +96,19 @@ export default function FighterSheet({ fighter, eligible, onSign, onClose, locke
         )}
         {fighter.confidence !== 'low' && fighter.note && <p className="footnote">{fighter.note}</p>}
 
+        <p className="footnote">
+          {fighter.src === 'model-recall' ? (
+            <>
+              <b>Unverified.</b> This record was written from an AI model's recall and has not been
+              checked against a source. Treat it as approximate.
+            </>
+          ) : (
+            <>
+              <b>Source:</b> {fighter.src}, checked {fighter.verified}.
+            </>
+          )}
+        </p>
+
         {onSign && eligible.length > 0 ? (
           <div className="sign-list">
             {eligible.map((slot) => {

@@ -103,9 +103,18 @@ export interface Fighter {
   promo?: { draw?: number; drama?: number };
 
   // --- provenance: these are factual claims about real people ---
+  /**
+   * Where the numbers came from.
+   *
+   * `'model-recall'` is the honest label for "written from an LLM's training
+   * knowledge and never checked against a source". It is NOT a citation, and a
+   * record carrying it must not be presented to a player as verified fact.
+   * Anything else names a real source that was actually consulted, and must be
+   * accompanied by `verified`.
+   */
   src: string;
-  /** YYYY-MM the record was last checked. */
-  verified: string;
+  /** YYYY-MM the record was actually checked. Absent means it never was. */
+  verified?: string;
   confidence: Confidence;
   note?: string;
 }
