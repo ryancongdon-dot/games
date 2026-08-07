@@ -92,6 +92,33 @@ describe('fighter data integrity', () => {
     }
   });
 
+  it('says where every tier came from', () => {
+    // tier is 55% of OVR. It must never be an anonymous number.
+    for (const f of FIGHTERS) {
+      expect(f.tierSrc, `${f.id}: missing tierSrc`).toBeTruthy();
+      if (f.tierSrc === 'editorial') {
+        expect(f.tierRank, `${f.id}: editorial tier cannot claim a rank`).toBeUndefined();
+      } else {
+        expect(f.tierRank, `${f.id}: cites ${f.tierSrc} but no rank`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('derives tier consistently from the Ring ranking', () => {
+    // rank 1 -> 99, rank 80 -> 78, linear. Guards against hand-edits drifting.
+    for (const f of FIGHTERS) {
+      if (f.tierRank === undefined) continue;
+      expect(f.tier, `${f.id} rank ${f.tierRank}`).toBe(
+        Math.round(99 - (f.tierRank - 1) * (21 / 79)),
+      );
+    }
+  });
+
+  it('grounds most of the pool in a published ranking', () => {
+    const ranked = FIGHTERS.filter((f) => f.tierSrc !== 'editorial').length;
+    expect(ranked / FIGHTERS.length).toBeGreaterThan(0.6);
+  });
+
   it('never claims a source without an actual verification date', () => {
     // The failure this guards against: labelling a record 'BoxRec' when nobody
     // ever opened BoxRec. Either say where it came from and when it was

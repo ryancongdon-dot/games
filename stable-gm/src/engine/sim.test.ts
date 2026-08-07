@@ -62,6 +62,7 @@ function syntheticRoster(
       titleReigns: titles.reigns,
       titleDefenses: titles.defenses,
       tier,
+      tierSrc: 'editorial',
       src: 'synthetic',
       verified: '2026-08',
       confidence: 'high' as const,
@@ -326,17 +327,39 @@ describe('bout distribution', () => {
   const seasons = Array.from({ length: 600 }, (_, i) => simSeason(BEST, FIGHTERS, { seed: i }));
   const allBouts = seasons.flatMap((s) => s.fighters.flatMap((f) => f.bouts));
 
-  it('stops a plausible share of bouts', () => {
+  /**
+   * Calibration reference — Neurology 2019, doi:10.1212/01.wnl.0000580936.14660.4e,
+   * a retrospective analysis of 1,690 US professional bouts:
+   *   KO 18.1% + TKO 35.1% = 53.2% stoppages, 46.5% decisions.
+   *
+   * We target ~40%, deliberately below that, because the study's population is
+   * all US professional boxing — dominated by club-show mismatches that end
+   * early — whereas this sim models champions against credible ranked
+   * opposition, which goes to the cards far more often. The deviation is a
+   * judgement call, but an argued one anchored to a real figure.
+   */
+  const STOPPAGE_TARGET = 0.4;
+  const STOPPAGE_TOLERANCE = 0.06;
+
+  it('stops bouts at the calibrated elite-level rate', () => {
     const stops = allBouts.filter((b) => b.method === 'KO' || b.method === 'TKO').length;
     const rate = stops / allBouts.length;
-    expect(rate).toBeGreaterThan(0.2);
-    expect(rate).toBeLessThan(0.6);
+    expect(rate).toBeGreaterThan(STOPPAGE_TARGET - STOPPAGE_TOLERANCE);
+    expect(rate).toBeLessThan(STOPPAGE_TARGET + STOPPAGE_TOLERANCE);
   });
 
-  it('draws sometimes but not often', () => {
+  it('stays below the all-boxing stoppage rate, as intended', () => {
+    // If this ever fails we have drifted into modelling club shows.
+    const rate =
+      allBouts.filter((b) => b.method === 'KO' || b.method === 'TKO').length / allBouts.length;
+    expect(rate).toBeLessThan(0.532);
+  });
+
+  it('draws at roughly the published professional rate', () => {
+    // Published figure is ~2-3% of professional bouts, higher in title fights.
     const draws = allBouts.filter((b) => b.result === 'D').length / allBouts.length;
-    expect(draws).toBeGreaterThan(0.005);
-    expect(draws).toBeLessThan(0.12);
+    expect(draws).toBeGreaterThan(0.015);
+    expect(draws).toBeLessThan(0.06);
   });
 
   it('stops more often at heavyweight than at flyweight', () => {

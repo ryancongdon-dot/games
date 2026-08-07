@@ -93,11 +93,22 @@ export interface Fighter {
   titleReigns: number;
   titleDefenses: number;
   /**
-   * Curated quality grade, 40-99. The dominant rating term: this is where
+   * Quality grade, 40-99. The dominant rating term (55% of OVR): this is where
    * judgement about *level of opposition* lives, since a raw W-L-D carries no
    * opponent-quality signal at all.
+   *
+   * Where possible this is DERIVED from a published ranking rather than
+   * invented — see `tierSrc`. That does not make it objective, but it makes it
+   * attributable to someone other than this codebase.
    */
   tier: number;
+  /**
+   * Where `tier` came from. `'editorial'` means it is an uncited judgement
+   * call; anything else names the published ranking it was derived from.
+   */
+  tierSrc: string;
+  /** Position in that ranking, when derived from one. */
+  tierRank?: number;
   attrs?: FighterAttrs;
   /** Card Promoter mode only — namespaced so it can grow without touching this schema. */
   promo?: { draw?: number; drama?: number };

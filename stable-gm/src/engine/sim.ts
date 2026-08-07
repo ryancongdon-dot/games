@@ -23,7 +23,24 @@ export const DRAW_BASE = 0.06;
 export const DRAW_ERA_BONUS = 0.05;
 export const DRAW_ERA_CUTOFF = 1950;
 
-export const KO_BASE = 0.22;
+/**
+ * Stoppage baseline, calibrated rather than guessed.
+ *
+ * A retrospective analysis of 1,690 US professional bouts (Neurology, 2019,
+ * doi:10.1212/01.wnl.0000580936.14660.4e) found 18.1% KO + 35.1% TKO = 53.2%
+ * of fights ending early, against 46.5% by decision.
+ *
+ * We deliberately target LOWER than that, ~40%. The study's population is all
+ * professional boxing in the US, which is dominated by club shows where a
+ * prospect is matched with a journeyman brought in to lose; mismatches end
+ * early. Stable GM simulates the opposite case — all-time greats against
+ * credible ranked opposition, where both men can genuinely fight, and elite
+ * championship boxing goes to the cards far more often. Calibrating to 53%
+ * would make the model less accurate for what it actually simulates.
+ *
+ * ~40% is the documented compromise. See STOPPAGE_TARGET in sim.test.ts.
+ */
+export const KO_BASE = 0.285;
 export const KO_POWER = 0.45;
 export const KO_CHIN = 0.3;
 export const KO_EDGE = 0.25;
@@ -48,7 +65,7 @@ export const OPP_JITTER = 6;
  * contender instead. Keeps real names in the bout log without letting an era's
  * talent level distort the difficulty.
  */
-export const OPP_MAX_DEVIATION = 11;
+export const OPP_MAX_DEVIATION = 14;
 /**
  * How many of the nearest candidates to choose between. Picking strictly the
  * closest makes a fighter face the same man every bout, which reads as broken
@@ -83,15 +100,15 @@ export const SCORE_BELT = 10;
 
 /**
  * Score bands. Calibrated against the measured distribution: a best-possible
- * stable from the shipped pool averages ~117, a worst-possible legal one ~46.
+ * stable from the shipped pool averages ~100, a worst-possible legal one ~40.
  * S is deliberately rare — it should mean a great draft that also ran well.
  */
 export const GRADE_CUTS: ReadonlyArray<readonly [number, string]> = [
-  [132, 'S'],
-  [112, 'A'],
-  [92, 'B'],
-  [70, 'C'],
-  [48, 'D'],
+  [120, 'S'],
+  [104, 'A'],
+  [86, 'B'],
+  [66, 'C'],
+  [46, 'D'],
   [0, 'F'],
 ];
 

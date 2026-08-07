@@ -89,6 +89,20 @@ export default function FighterSheet({ fighter, eligible, onSign, onClose, locke
           </div>
         </dl>
 
+        <p className="footnote">
+          {fighter.tierRank ? (
+            <>
+              <b>Rated #{fighter.tierRank}</b> in {fighter.tierSrc}. That ranking drives most of
+              this fighter's {neutral.ovr} rating.
+            </>
+          ) : (
+            <>
+              <b>Rating is editorial.</b> This fighter isn't on the published ranking used
+              elsewhere, so their quality grade is an uncited judgement call.
+            </>
+          )}
+        </p>
+
         {fighter.confidence === 'low' && (
           <p className="footnote">
             <b>* Disputed record.</b> {fighter.note ?? 'Sources disagree on this ledger.'}
