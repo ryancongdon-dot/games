@@ -3,29 +3,35 @@
 The records in `fighters.ts` are factual claims about real people. Treat them as data with a
 citation, not as game balance knobs.
 
-## ⚠️ Most of this data is unverified
+## Provenance status
 
-**77 of the 80 records carry `src: 'model-recall'`.** That means the numbers were written from an
-AI model's training knowledge and have never been checked against a source. They are plausible and
-mostly correct, but they are not citations.
+**All 80 records have now been checked against a source.** Each carries `src` (where the figures came
+from) and `verified` (YYYY-MM). None remain on `src: 'model-recall'`.
 
-This file originally labelled every record `src: 'BoxRec', verified: '2026-08'`, which was false —
-BoxRec was never consulted. That has been corrected. A spot check of three fighters found:
+This matters because the file originally labelled every record `src: 'BoxRec', verified: '2026-08'`
+while BoxRec had never been consulted — the numbers came from an LLM's training recall and the
+provenance fields asserted a check that never happened. That was corrected first by relabelling the
+unverified records honestly, then by actually verifying them.
 
-| Fighter | Model recall | Actual | |
-| --- | --- | --- | --- |
-| Éder Jofre | 72-2-4 (50 KO) | 72-2-4 (50 KO) | ✅ |
-| Carlos Zárate | 66-4 (63 KO) | 66-4 (63 KO) | ✅ |
-| Jimmy Wilde | 132-3-2 (99 KO) | 132-4-1 (98 KO) per BoxRec | ❌ corrected |
+### What the verification found
 
-So: roughly right, individually unreliable. **Verifying records one at a time — replacing
-`'model-recall'` with a real source and a `verified` date — is the highest-value work on this file.**
-`fighters.test.ts` enforces that a record naming a source must also carry a verification date, so
-the label can't drift back into fiction.
+The original recalled data was **substantially wrong**. Roughly two-thirds of records needed a
+correction to the ledger, the physicals, or both:
 
-Note that `confidence` is a *different* axis. It describes whether sources agree with each other,
-not whether we checked one. A record can be verified and still `confidence: 'low'` (Jimmy Wilde), or
-unverified and `confidence: 'high'`.
+| Field | Outcome |
+| --- | --- |
+| W-L-D-KO | ~20 records materially wrong |
+| Height / reach | Wrong more often than right; most were off by 1–3 inches |
+| Worst single error | Betulio González: recalled 60-12-3 (38 KO), actually 76-12-4 (52 KO) |
+| Others badly wrong | Joe Brown 104-44-13 → 122-47-14; Mickey Walker 94-19-4 → 131-25-6; Manuel Ortiz 96-28-3 → 100-28-3 |
+
+Errors clustered on **less famous fighters**. An early sample of nine was almost all all-time greats
+and came back 8/9 correct, which badly flattered the dataset. Reach errors matter more than they
+look: reach feeds the bout edge in `sim.ts` directly.
+
+**Unconfirmed figures are marked, not guessed.** Where a source could not confirm a number it is
+called out in the record's `note` (e.g. Tommy Loughran's KO total) rather than being quietly kept and
+presented as verified.
 
 ## Counting conventions
 
@@ -66,10 +72,12 @@ stay attached to the number wherever the number is shown.
 
 - **`ht` / `reach`** are published tale-of-the-tape figures. For pre-1930 fighters these were
   measured inconsistently and should be read as approximate.
-- **`tier` (40–99)** is *editorial judgement*, not a source claim. It is where an assessment of
-  level of opposition lives, since a raw W-L-D carries no opponent-quality signal at all — a 50-0
-  record against nobody and a 50-0 record against champions look identical to the arithmetic. It is
-  the dominant term in the rating, so it is also the main balance lever.
+- **`tier` (40–99)** carries an assessment of *level of opposition*, since a raw W-L-D has no
+  opponent-quality signal at all — 50-0 against nobody and 50-0 against champions are arithmetically
+  identical. It is the dominant term in the rating (55% of OVR) and the main balance lever. For the
+  54 fighters on Ring Magazine's *80 Best Fighters of the Last 80 Years* (2002) it is **derived from
+  that ranking** and carries `tierSrc`/`tierRank`; the other 26 fall outside the list's 1922–2002
+  window and remain `tierSrc: 'editorial'`, an uncited judgement call, labelled as such in the UI.
 - **`style`** is a categorisation for the sim's style-matchup triangle, not a formal designation.
 - **`attrs`** are optional 0–100 overrides used only where the derived defaults misrepresent a
   fighter (Miguel Canto's power, Willie Pep's speed, Kid Gavilán's chin).

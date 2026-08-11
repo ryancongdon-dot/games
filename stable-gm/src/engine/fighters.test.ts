@@ -119,6 +119,13 @@ describe('fighter data integrity', () => {
     expect(ranked / FIGHTERS.length).toBeGreaterThan(0.6);
   });
 
+  it('has no unverified records left', () => {
+    // The pool was fully verified against sources; this stops it regressing.
+    // A new fighter must arrive with a real citation, not model recall.
+    const unverified = FIGHTERS.filter((f) => f.src === 'model-recall').map((f) => f.id);
+    expect(unverified, `unsourced records: ${unverified.join(', ')}`).toEqual([]);
+  });
+
   it('never claims a source without an actual verification date', () => {
     // The failure this guards against: labelling a record 'BoxRec' when nobody
     // ever opened BoxRec. Either say where it came from and when it was

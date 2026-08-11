@@ -242,10 +242,9 @@ export default function App() {
           )}
 
           <p className="disclaimer">
-            Most fighter records here were written from an AI model's recall and have{' '}
-            <b>not been checked against a source</b> — each fighter's card says which. Ledgers from
-            before about 1925 are genuinely disputed even between real sources, and are marked with
-            an asterisk. The ratings and the bout simulation are invented judgement, not history.
+            Every fighter record here has been checked against a source, cited on the fighter's card.
+            Ledgers from before about 1925 are genuinely disputed even between real sources and are
+            marked with an asterisk. Ratings and the bout simulation are judgement, not history.
           </p>
         </div>
         {toast && <div className="toast">{toast}</div>}
