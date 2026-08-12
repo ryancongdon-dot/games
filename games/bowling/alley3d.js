@@ -319,11 +319,13 @@ function bowlNight() {
   if (ST) ST.rivalBanter(n.opp, () => go('lanes.html')); else go('lanes.html');
 }
 // shopkeepers stand BEHIND their counters (nz); Gus greets out front
+// Gus/Rosa/Mac/Sal use the AI-generated (Meshy) models — real faces, but
+// static meshes with no walk/idle clips. Fine here since they never move.
 const STATIONS = [
-  { file: 'character-male-e',   x: -9,   name: 'Gus',  act: bowlNight, promptFor: 'gus' },
-  { file: 'character-female-b', x: -4.9, nz: -4.0, name: 'Rosa', act: () => go('pizza.html'),  prompt: 'Help the pizza rush' },
-  { file: 'character-male-c',   x: 0,    nz: -4.0, name: 'Mac',  act: () => go('arcade.html'), prompt: 'Fix the cabinets' },
-  { file: 'character-female-d', x: 4.5,  nz: -4.0, name: 'Sal',  act: () => go('proshop.html'), prompt: 'Browse the Pro Shop' },
+  { file: 'gus',  x: -9,   name: 'Gus',  act: bowlNight, promptFor: 'gus' },
+  { file: 'rosa', x: -4.9, nz: -4.0, name: 'Rosa', act: () => go('pizza.html'),  prompt: 'Help the pizza rush' },
+  { file: 'mac',  x: 0,    nz: -4.0, name: 'Mac',  act: () => go('arcade.html'), prompt: 'Fix the cabinets' },
+  { file: 'sal',  x: 4.5,  nz: -4.0, name: 'Sal',  act: () => go('proshop.html'), prompt: 'Browse the Pro Shop' },
   { file: null,                 x: 9,    name: '',     act: () => showBoard(), prompt: 'Check the standings' },
 ];
 const npcZ = -2.2;
